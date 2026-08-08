@@ -1,30 +1,43 @@
+import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import {
-  Text,
-  TextInput,
   Button,
   Surface,
+  Text,
+  TextInput,
 } from 'react-native-paper';
-import { useState } from 'react';
+import { router } from 'expo-router';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleLogin = () => {
-    // Backend authentication will be connected later
-    console.log('Login:', email);
+  const handleCustomerLogin = () => {
+    console.log('Customer login pressed');
+
+    router.replace('/customer');
+  };
+
+  const handleAdminLogin = () => {
+    console.log('Admin login pressed');
+
+    router.replace('/admin');
   };
 
   return (
     <View style={styles.container}>
-      <Surface style={styles.card} elevation={2}>
-        <Text variant="headlineMedium" style={styles.title}>
+      <Surface style={styles.card} elevation={3}>
+
+        <Text style={styles.brand}>
+          GrandStay
+        </Text>
+
+        <Text style={styles.title}>
           Welcome Back
         </Text>
 
-        <Text variant="bodyMedium" style={styles.subtitle}>
-          Sign in to continue to your hotel account
+        <Text style={styles.subtitle}>
+          Sign in to continue
         </Text>
 
         <TextInput
@@ -48,20 +61,30 @@ export default function LoginScreen() {
 
         <Button
           mode="contained"
-          onPress={handleLogin}
-          style={styles.loginButton}
+          onPress={handleCustomerLogin}
+          style={styles.button}
           contentStyle={styles.buttonContent}
         >
           Sign In
         </Button>
 
         <Button
+          mode="outlined"
+          onPress={handleAdminLogin}
+          style={styles.adminButton}
+          contentStyle={styles.buttonContent}
+        >
+          Demo Admin Login
+        </Button>
+
+        <Button
           mode="text"
-          onPress={() => {}}
+          onPress={() => router.push('/auth/register')}
           textColor="#082A55"
         >
           Create an account
         </Button>
+
       </Surface>
     </View>
   );
@@ -77,31 +100,46 @@ const styles = StyleSheet.create({
 
   card: {
     padding: 24,
-    borderRadius: 16,
+    borderRadius: 18,
     backgroundColor: '#FFFFFF',
   },
 
-  title: {
-    color: '#082A55',
-    fontWeight: '700',
+  brand: {
     textAlign: 'center',
+    color: '#FCA311',
+    fontSize: 28,
+    fontWeight: '800',
+    marginBottom: 18,
+  },
+
+  title: {
+    textAlign: 'center',
+    color: '#082A55',
+    fontSize: 28,
+    fontWeight: '800',
   },
 
   subtitle: {
-    color: '#6B7280',
     textAlign: 'center',
+    color: '#6B7280',
     marginTop: 8,
     marginBottom: 28,
   },
 
   input: {
-    marginBottom: 16,
+    marginBottom: 15,
     backgroundColor: '#FFFFFF',
   },
 
-  loginButton: {
+  button: {
     marginTop: 8,
     borderRadius: 10,
+  },
+
+  adminButton: {
+    marginTop: 12,
+    borderRadius: 10,
+    borderColor: '#082A55',
   },
 
   buttonContent: {
