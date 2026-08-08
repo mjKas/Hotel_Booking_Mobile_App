@@ -1,19 +1,19 @@
 import { Stack } from 'expo-router';
 
-export default function AuthLayout() {
+export default function RoomsLayout() {
   return (
     <Stack>
       <Stack.Screen
-        name="login"
+        name="index"
         options={{
-          headerShown: false,
+          title: 'Rooms',
         }}
       />
 
       <Stack.Screen
-        name="register"
+        name="[id]"
         options={{
-          title: 'Create Account',
+          title: 'Room Details',
         }}
       />
     </Stack>
