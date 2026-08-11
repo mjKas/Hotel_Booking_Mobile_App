@@ -1,7 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   FlatList,
-  Image,
   StyleSheet,
   View,
 } from 'react-native';
@@ -12,7 +11,7 @@ import {
   Searchbar,
 } from 'react-native-paper';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
 
 const rooms = [
   {
@@ -48,6 +47,8 @@ const rooms = [
 ];
 
 export default function RoomsScreen() {
+  const colors = useAppThemeColors();
+  const styles = createStyles(colors);
   const [search, setSearch] = useState('');
 
   const filteredRooms = rooms.filter((room) =>
@@ -121,34 +122,34 @@ export default function RoomsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useAppThemeColors>) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F8FA',
+    backgroundColor: colors.background,
   },
 
   header: {
-    backgroundColor: '#082A55',
+    backgroundColor: colors.primary,
     paddingTop: 55,
     paddingHorizontal: 20,
     paddingBottom: 22,
   },
 
   title: {
-    color: '#FFFFFF',
+    color: colors.headerText,
     fontSize: 27,
     fontWeight: '800',
   },
 
   subtitle: {
-    color: '#DCE5F0',
+    color: colors.headerSubtle,
     marginTop: 4,
   },
 
   search: {
     margin: 16,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
 
   list: {
@@ -160,7 +161,7 @@ const styles = StyleSheet.create({
     marginBottom: 18,
     borderRadius: 15,
     overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
 
   image: {
@@ -174,17 +175,17 @@ const styles = StyleSheet.create({
   roomType: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#082A55',
+    color: colors.textPrimary,
   },
 
   roomNumber: {
     marginTop: 3,
-    color: '#6B7280',
+    color: colors.textSecondary,
   },
 
   description: {
     marginTop: 10,
-    color: '#6B7280',
+    color: colors.textSecondary,
     lineHeight: 20,
   },
 
@@ -197,7 +198,7 @@ const styles = StyleSheet.create({
 
   price: {
     fontWeight: '700',
-    color: '#082A55',
+    color: colors.textPrimary,
     fontSize: 17,
   },
 

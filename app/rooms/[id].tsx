@@ -11,6 +11,7 @@ import {
   Divider,
 } from 'react-native-paper';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
 
 const room = {
   id: '1',
@@ -35,6 +36,9 @@ const room = {
 };
 
 export default function RoomDetailsScreen() {
+  const colors = useAppThemeColors();
+  const styles = createStyles(colors);
+
   useLocalSearchParams();
 
   return (
@@ -57,7 +61,7 @@ export default function RoomDetailsScreen() {
               <View
                 style={[
                   styles.image,
-                  { backgroundColor: '#D9DEE5' },
+                  { backgroundColor: colors.imagePlaceholder },
                 ]}
               />
             </View>
@@ -83,7 +87,7 @@ export default function RoomDetailsScreen() {
         </View>
 
         <View style={styles.capacity}>
-          <Text>
+          <Text style={styles.capacityText}>
             Suitable for {room.capacity} guests
           </Text>
         </View>
@@ -129,10 +133,10 @@ export default function RoomDetailsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useAppThemeColors>) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
 
   imageContainer: {
@@ -150,8 +154,8 @@ const styles = StyleSheet.create({
     zIndex: 2,
     right: 15,
     top: 50,
-    backgroundColor: '#082A55',
-    color: '#FFFFFF',
+    backgroundColor: colors.primary,
+    color: colors.headerText,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 15,
@@ -164,11 +168,11 @@ const styles = StyleSheet.create({
   type: {
     fontSize: 27,
     fontWeight: '800',
-    color: '#082A55',
+    color: colors.textPrimary,
   },
 
   roomNumber: {
-    color: '#6B7280',
+    color: colors.textSecondary,
     marginTop: 4,
     fontSize: 15,
   },
@@ -182,18 +186,18 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 27,
     fontWeight: '800',
-    color: '#082A55',
+    color: colors.textPrimary,
   },
 
   perNight: {
     marginLeft: 5,
-    color: '#6B7280',
+    color: colors.textSecondary,
   },
 
   capacity: {
     marginTop: 12,
     padding: 12,
-    backgroundColor: '#F7F8FA',
+    backgroundColor: colors.background,
     borderRadius: 10,
   },
 
@@ -204,12 +208,12 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 19,
     fontWeight: '700',
-    color: '#082A55',
+    color: colors.textPrimary,
     marginBottom: 10,
   },
 
   description: {
-    color: '#6B7280',
+    color: colors.textSecondary,
     lineHeight: 22,
     marginBottom: 22,
   },
@@ -221,11 +225,15 @@ const styles = StyleSheet.create({
   },
 
   chip: {
-    backgroundColor: '#EEF2F7',
+    backgroundColor: colors.surfaceVariant,
   },
 
   chipText: {
-    color: '#082A55',
+    color: colors.textPrimary,
+  },
+
+  capacityText: {
+    color: colors.textPrimary,
   },
 
   bookButton: {

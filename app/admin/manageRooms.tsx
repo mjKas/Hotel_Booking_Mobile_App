@@ -13,6 +13,7 @@ import {
   Text,
   TextInput,
 } from 'react-native-paper';
+import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
 
 interface Room {
   id: string;
@@ -59,7 +60,11 @@ const initialRooms: Room[] = [
 ];
 
 export default function ManageRoomsScreen() {
+  const colors = useAppThemeColors();
+  const styles = createStyles(colors);
   const [rooms, setRooms] = useState(initialRooms);
+  const [editingRoomId, setEditingRoomId] =
+    useState<string | null>(null);
   const [dialogVisible, setDialogVisible] =
     useState(false);
 
@@ -69,6 +74,7 @@ export default function ManageRoomsScreen() {
   const [capacity, setCapacity] = useState('');
 
   const openAddRoom = () => {
+    setEditingRoomId(null);
     setRoomNumber('');
     setRoomType('');
     setPrice('');
@@ -76,17 +82,45 @@ export default function ManageRoomsScreen() {
     setDialogVisible(true);
   };
 
-  const addRoom = () => {
-    const newRoom: Room = {
-      id: Date.now().toString(),
-      number: roomNumber,
-      type: roomType,
-      price: Number(price),
-      capacity: Number(capacity),
-      status: 'AVAILABLE',
-    };
+  const openEditRoom = (room: Room) => {
+    setEditingRoomId(room.id);
+    setRoomNumber(room.number);
+    setRoomType(room.type);
+    setPrice(String(room.price));
+    setCapacity(String(room.capacity));
+    setDialogVisible(true);
+  };
 
-    setRooms((current) => [...current, newRoom]);
+  const saveRoom = () => {
+    if (editingRoomId) {
+      setRooms((current) =>
+        current.map((room) =>
+          room.id === editingRoomId
+            ? {
+                ...room,
+                number: roomNumber,
+                type: roomType,
+                price: Number(price),
+                capacity: Number(capacity),
+              }
+            : room,
+        ),
+      );
+      setDialogVisible(false);
+      return;
+    }
+
+    setRooms((current) => [
+      ...current,
+      {
+        id: Date.now().toString(),
+        number: roomNumber,
+        type: roomType,
+        price: Number(price),
+        capacity: Number(capacity),
+        status: 'AVAILABLE',
+      },
+    ]);
     setDialogVisible(false);
   };
 
@@ -115,6 +149,8 @@ export default function ManageRoomsScreen() {
             icon="plus"
             onPress={openAddRoom}
             compact
+            buttonColor={colors.secondary}
+            textColor="#000000"
           >
             Add
           </Button>
@@ -141,9 +177,10 @@ export default function ManageRoomsScreen() {
 
                   <Chip
                     compact
-                    style={getStatusStyle(item.status)}
+                    style={getStatusStyle(item.status, styles)}
                     textStyle={getStatusTextStyle(
                       item.status,
+                      styles,
                     )}
                   >
                     {item.status}
@@ -167,19 +204,26 @@ export default function ManageRoomsScreen() {
                 <View style={styles.actions}>
                   <Button
                     mode="outlined"
-                    onPress={() => {}}
-                    style={styles.actionButton}
+                    textColor={colors.secondary}
+                    onPress={() => openEditRoom(item)}
+                    style={[
+                      styles.actionButton,
+                      styles.editButton,
+                    ]}
                   >
                     Edit
                   </Button>
 
                   <Button
                     mode="outlined"
-                    textColor="#D32F2F"
+                    textColor={colors.error}
                     onPress={() =>
                       deleteRoom(item.id)
                     }
-                    style={styles.actionButton}
+                    style={[
+                      styles.actionButton,
+                      styles.deleteButton,
+                    ]}
                   >
                     Delete
                   </Button>
@@ -196,7 +240,7 @@ export default function ManageRoomsScreen() {
           onDismiss={() => setDialogVisible(false)}
         >
           <Dialog.Title>
-            Add New Room
+            {editingRoomId ? 'Edit Room' : 'Add New Room'}
           </Dialog.Title>
 
           <Dialog.Content>
@@ -240,12 +284,16 @@ export default function ManageRoomsScreen() {
               onPress={() =>
                 setDialogVisible(false)
               }
+              textColor={colors.textPrimary}
             >
               Cancel
             </Button>
 
-            <Button onPress={addRoom}>
-              Add Room
+            <Button
+              onPress={saveRoom}
+              textColor={colors.secondary}
+            >
+              {editingRoomId ? 'Save Room' : 'Add Room'}
             </Button>
           </Dialog.Actions>
         </Dialog>
@@ -256,6 +304,7 @@ export default function ManageRoomsScreen() {
 
 function getStatusStyle(
   status: Room['status'],
+  styles: ReturnType<typeof createStyles>,
 ) {
   switch (status) {
     case 'AVAILABLE':
@@ -271,6 +320,7 @@ function getStatusStyle(
 
 function getStatusTextStyle(
   status: Room['status'],
+  styles: ReturnType<typeof createStyles>,
 ) {
   switch (status) {
     case 'AVAILABLE':
@@ -284,14 +334,14 @@ function getStatusTextStyle(
   }
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useAppThemeColors>) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F8FA',
+    backgroundColor: colors.background,
   },
 
   header: {
-    backgroundColor: '#082A55',
+    backgroundColor: colors.primary,
     paddingTop: 55,
     paddingHorizontal: 20,
     paddingBottom: 20,
@@ -301,13 +351,13 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    color: '#FFFFFF',
+    color: colors.headerText,
     fontSize: 25,
     fontWeight: '800',
   },
 
   subtitle: {
-    color: '#DCE5F0',
+    color: colors.headerSubtle,
     marginTop: 3,
   },
 
@@ -319,7 +369,7 @@ const styles = StyleSheet.create({
   card: {
     marginBottom: 14,
     borderRadius: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
 
   roomHeader: {
@@ -334,25 +384,25 @@ const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 12,
-    backgroundColor: '#EAF0F7',
+    backgroundColor: colors.surfaceVariant,
   },
 
   number: {
     fontSize: 19,
     fontWeight: '800',
-    color: '#082A55',
+    color: colors.textPrimary,
   },
 
   roomLabel: {
     fontSize: 8,
-    color: '#6B7280',
+    color: colors.textSecondary,
     fontWeight: '700',
   },
 
   roomType: {
     fontSize: 19,
     fontWeight: '700',
-    color: '#082A55',
+    color: colors.textPrimary,
     marginTop: 14,
   },
 
@@ -363,7 +413,7 @@ const styles = StyleSheet.create({
   },
 
   price: {
-    color: '#082A55',
+    color: colors.textPrimary,
     fontWeight: '700',
   },
 
@@ -378,38 +428,46 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
 
+  editButton: {
+    borderColor: colors.secondary,
+  },
+
+  deleteButton: {
+    borderColor: colors.error,
+  },
+
   available: {
-    backgroundColor: '#E8F5E9',
+    backgroundColor: colors.successSurface,
   },
 
   availableText: {
-    color: '#2E7D32',
+    color: colors.success,
     fontSize: 10,
     fontWeight: '800',
   },
 
   occupied: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: colors.infoSurface,
   },
 
   occupiedText: {
-    color: '#1976D2',
+    color: colors.info,
     fontSize: 10,
     fontWeight: '800',
   },
 
   maintenance: {
-    backgroundColor: '#FFEBEE',
+    backgroundColor: colors.errorSurface,
   },
 
   maintenanceText: {
-    color: '#D32F2F',
+    color: colors.error,
     fontSize: 10,
     fontWeight: '800',
   },
 
   dialogInput: {
     marginBottom: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
 });

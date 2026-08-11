@@ -2,12 +2,25 @@ import { Stack } from 'expo-router';
 import { PaperProvider } from 'react-native-paper';
 import { StatusBar } from 'expo-status-bar';
 
-import { theme } from '../src/constants/theme';
+import {
+  ThemePreferenceProvider,
+  useThemePreference,
+} from '../src/context/theme-preference';
 
 export default function RootLayout() {
   return (
-    <PaperProvider theme={theme}>
-      <StatusBar style="light" />
+    <ThemePreferenceProvider>
+      <RootLayoutContent />
+    </ThemePreferenceProvider>
+  );
+}
+
+function RootLayoutContent() {
+  const { themeMode, paperTheme } = useThemePreference();
+
+  return (
+    <PaperProvider theme={paperTheme}>
+      <StatusBar style={themeMode === 'dark' ? 'light' : 'dark'} />
 
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="auth" />

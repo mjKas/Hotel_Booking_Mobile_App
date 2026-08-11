@@ -9,8 +9,13 @@ import {
   Text,
 } from 'react-native-paper';
 import { router } from 'expo-router';
+import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
+import { ThemeModeSelector } from '@/src/components/theme-mode-selector';
 
 export default function CustomerProfileScreen() {
+  const colors = useAppThemeColors();
+  const styles = createStyles(colors);
+
   return (
     <ScrollView
       style={styles.container}
@@ -20,7 +25,7 @@ export default function CustomerProfileScreen() {
         <Avatar.Text
           size={82}
           label="JD"
-          color="#FFFFFF"
+          color={colors.headerText}
           style={styles.avatar}
         />
 
@@ -86,23 +91,15 @@ export default function CustomerProfileScreen() {
 
         <Divider />
 
-        <List.Item
-          title="Settings"
-          description="App preferences"
-          left={(props) => (
-            <List.Icon {...props} icon="cog-outline" />
-          )}
-          right={(props) => (
-            <List.Icon {...props} icon="chevron-right" />
-          )}
-          onPress={() => {}}
-        />
+        <Card.Content style={styles.settingsContent}>
+          <ThemeModeSelector />
+        </Card.Content>
       </Card>
 
       <Button
         mode="outlined"
         icon="logout"
-        textColor="#D32F2F"
+        textColor={colors.error}
         style={styles.logout}
         onPress={() => {
           router.replace('/auth/login');
@@ -114,10 +111,10 @@ export default function CustomerProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useAppThemeColors>) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F8FA',
+    backgroundColor: colors.background,
   },
 
   content: {
@@ -125,25 +122,25 @@ const styles = StyleSheet.create({
   },
 
   profileHeader: {
-    backgroundColor: '#082A55',
+    backgroundColor: colors.primary,
     alignItems: 'center',
     paddingTop: 60,
     paddingBottom: 30,
   },
 
   avatar: {
-    backgroundColor: '#FCA311',
+    backgroundColor: colors.secondary,
   },
 
   name: {
-    color: '#FFFFFF',
+    color: colors.headerText,
     fontSize: 23,
     fontWeight: '800',
     marginTop: 12,
   },
 
   email: {
-    color: '#DCE5F0',
+    color: colors.headerSubtle,
     marginTop: 4,
   },
 
@@ -151,21 +148,25 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 16,
     borderRadius: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     overflow: 'hidden',
   },
 
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#082A55',
+    color: colors.textPrimary,
     marginBottom: 8,
+  },
+
+  settingsContent: {
+    paddingVertical: 14,
   },
 
   logout: {
     marginHorizontal: 16,
     marginTop: 25,
-    borderColor: '#D32F2F',
+    borderColor: colors.error,
     borderRadius: 10,
   },
 });

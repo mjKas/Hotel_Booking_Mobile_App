@@ -2,8 +2,12 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Button, Text } from 'react-native-paper';
 import { router } from 'expo-router';
+import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
 
 export default function BookingConfirmationScreen() {
+  const colors = useAppThemeColors();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.container}>
       <View style={styles.icon}>
@@ -65,9 +69,9 @@ export default function BookingConfirmationScreen() {
 
       <Button
         mode="text"
-        textColor="#082A55"
+        textColor={colors.primary}
         onPress={() =>
-          router.replace('/customer')
+          router.replace('/customer/tabs')
         }
       >
         Back to Home
@@ -76,10 +80,10 @@ export default function BookingConfirmationScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useAppThemeColors>) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F8FA',
+    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
@@ -89,13 +93,13 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#E8F5E9',
+    backgroundColor: colors.successSurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   check: {
-    color: '#2E7D32',
+    color: colors.success,
     fontSize: 42,
     fontWeight: '700',
   },
@@ -103,12 +107,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 27,
     fontWeight: '800',
-    color: '#082A55',
+    color: colors.textPrimary,
     marginTop: 20,
   },
 
   subtitle: {
-    color: '#6B7280',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginTop: 8,
     lineHeight: 21,
@@ -116,7 +120,7 @@ const styles = StyleSheet.create({
 
   bookingCard: {
     width: '100%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 20,
     marginTop: 28,
@@ -125,39 +129,39 @@ const styles = StyleSheet.create({
   bookingId: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#6B7280',
+    color: colors.textSecondary,
   },
 
   bookingNumber: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#082A55',
+    color: colors.textPrimary,
     marginTop: 4,
   },
 
   divider: {
     height: 1,
-    backgroundColor: '#E5E5E5',
+    backgroundColor: colors.border,
     marginVertical: 16,
   },
 
   room: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#082A55',
+    color: colors.textPrimary,
   },
 
   details: {
-    color: '#6B7280',
+    color: colors.textSecondary,
     marginTop: 5,
   },
 
   totalLabel: {
-    color: '#6B7280',
+    color: colors.textSecondary,
   },
 
   total: {
-    color: '#082A55',
+    color: colors.textPrimary,
     fontSize: 24,
     fontWeight: '800',
     marginTop: 3,

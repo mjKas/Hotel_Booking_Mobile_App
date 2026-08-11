@@ -1,8 +1,26 @@
 import { Drawer } from 'expo-router/drawer';
+import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
 
 export default function AdminLayout() {
+  const colors = useAppThemeColors();
+
   return (
-    <Drawer>
+    <Drawer
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: colors.surface,
+        },
+        headerTintColor: colors.textPrimary,
+        drawerActiveTintColor: colors.primary,
+        drawerInactiveTintColor: colors.textSecondary,
+        drawerStyle: {
+          backgroundColor: colors.surface,
+        },
+        drawerContentStyle: {
+          backgroundColor: colors.surface,
+        },
+      }}
+    >
       <Drawer.Screen
         name="index"
         options={{

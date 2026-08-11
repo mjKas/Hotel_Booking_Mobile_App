@@ -1,19 +1,24 @@
 import { Tabs } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
 
 export default function CustomerTabsLayout() {
+  const colors = useAppThemeColors();
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
 
-        tabBarActiveTintColor: '#082A55',
-        tabBarInactiveTintColor: '#8A8A8A',
+        tabBarActiveTintColor: colors.secondary,
+        tabBarInactiveTintColor: colors.tabInactive,
 
         tabBarStyle: {
           height: 65,
           paddingBottom: 8,
           paddingTop: 5,
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
         },
 
         tabBarLabelStyle: {
@@ -37,7 +42,7 @@ export default function CustomerTabsLayout() {
       />
 
       <Tabs.Screen
-        name="bookings"
+        name="booking"
         options={{
           title: 'Bookings',
           tabBarIcon: ({ color, size }) => (

@@ -2,8 +2,12 @@ import React from 'react';
 import { ScrollView, StyleSheet, View, Image } from 'react-native';
 import { Text, Button, Surface } from 'react-native-paper';
 import { router } from 'expo-router';
+import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
 
 export default function CustomerHomeScreen() {
+  const colors = useAppThemeColors();
+  const styles = createStyles(colors);
+
   return (
     <ScrollView
       style={styles.container}
@@ -18,7 +22,7 @@ export default function CustomerHomeScreen() {
 
         <Button
           mode="text"
-          textColor="#082A55"
+          textColor={colors.primary}
           onPress={() => router.push('/customer/tabs/profile')}
         >
           Profile
@@ -74,7 +78,7 @@ export default function CustomerHomeScreen() {
 
         <Button
           mode="text"
-          textColor="#FCA311"
+          textColor={colors.secondary}
           onPress={() => router.push('/rooms')}
         >
           View All
@@ -112,10 +116,10 @@ export default function CustomerHomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useAppThemeColors>) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F8FA',
+    backgroundColor: colors.background,
   },
 
   content: {
@@ -123,7 +127,7 @@ const styles = StyleSheet.create({
   },
 
   header: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     paddingHorizontal: 20,
     paddingTop: 55,
     paddingBottom: 15,
@@ -135,12 +139,12 @@ const styles = StyleSheet.create({
   brand: {
     fontSize: 25,
     fontWeight: '800',
-    color: '#082A55',
+    color: colors.textPrimary,
   },
 
   welcome: {
     marginTop: 3,
-    color: '#6B7280',
+    color: colors.textSecondary,
   },
 
   heroImage: {
@@ -149,19 +153,19 @@ const styles = StyleSheet.create({
   },
 
   heroOverlay: {
-    backgroundColor: '#082A55',
+    backgroundColor: colors.primary,
     paddingHorizontal: 20,
     paddingVertical: 18,
   },
 
   heroTitle: {
-    color: '#FFFFFF',
+    color: colors.headerText,
     fontSize: 23,
     fontWeight: '700',
   },
 
   heroSubtitle: {
-    color: '#E5E5E5',
+    color: colors.headerSubtle,
     marginTop: 5,
     fontSize: 14,
   },
@@ -170,13 +174,13 @@ const styles = StyleSheet.create({
     margin: 16,
     padding: 18,
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
 
   sectionTitle: {
     fontSize: 19,
     fontWeight: '700',
-    color: '#082A55',
+    color: colors.textPrimary,
   },
 
   dateRow: {
@@ -188,14 +192,14 @@ const styles = StyleSheet.create({
   dateBox: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
+    borderColor: colors.border,
     borderRadius: 10,
     padding: 12,
   },
 
   guestBox: {
     borderWidth: 1,
-    borderColor: '#E5E5E5',
+    borderColor: colors.border,
     borderRadius: 10,
     padding: 12,
     marginTop: 10,
@@ -203,13 +207,13 @@ const styles = StyleSheet.create({
 
   label: {
     fontSize: 11,
-    color: '#6B7280',
+    color: colors.textSecondary,
     fontWeight: '700',
   },
 
   value: {
     fontSize: 15,
-    color: '#082A55',
+    color: colors.textPrimary,
     fontWeight: '600',
     marginTop: 4,
   },
@@ -235,7 +239,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     borderRadius: 15,
     overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
 
   featuredImage: {
@@ -250,11 +254,11 @@ const styles = StyleSheet.create({
   roomTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#082A55',
+    color: colors.textPrimary,
   },
 
   roomDescription: {
-    color: '#6B7280',
+    color: colors.textSecondary,
     marginTop: 5,
     lineHeight: 20,
   },
@@ -269,6 +273,6 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#082A55',
+    color: colors.textPrimary,
   },
 });

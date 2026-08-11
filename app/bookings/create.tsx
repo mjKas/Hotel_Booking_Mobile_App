@@ -8,8 +8,11 @@ import {
 } from 'react-native-paper';
 import { Calendar } from 'react-native-calendars';
 import { router } from 'expo-router';
+import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
 
 export default function CreateBookingScreen() {
+  const colors = useAppThemeColors();
+  const styles = createStyles(colors);
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
   const [guests, setGuests] = useState(2);
@@ -78,15 +81,21 @@ export default function CreateBookingScreen() {
             ? {
                 [checkIn]: {
                   selected: true,
-                  selectedColor: '#082A55',
+                  selectedColor: colors.primary,
                 },
               }
             : {}
         }
         theme={{
-          selectedDayBackgroundColor: '#082A55',
-          todayTextColor: '#FCA311',
-          arrowColor: '#082A55',
+          calendarBackground: colors.surface,
+          textSectionTitleColor: colors.textSecondary,
+          dayTextColor: colors.textPrimary,
+          monthTextColor: colors.textPrimary,
+          selectedDayBackgroundColor: colors.primary,
+          selectedDayTextColor: colors.headerText,
+          todayTextColor: colors.secondary,
+          arrowColor: colors.primary,
+          textDisabledColor: colors.border,
         }}
       />
 
@@ -112,15 +121,21 @@ export default function CreateBookingScreen() {
                 ? {
                     [checkOut]: {
                       selected: true,
-                      selectedColor: '#FCA311',
+                      selectedColor: colors.secondary,
                     },
                   }
                 : {}
             }
             theme={{
-              selectedDayBackgroundColor: '#FCA311',
-              todayTextColor: '#082A55',
-              arrowColor: '#082A55',
+              calendarBackground: colors.surface,
+              textSectionTitleColor: colors.textSecondary,
+              dayTextColor: colors.textPrimary,
+              monthTextColor: colors.textPrimary,
+              selectedDayBackgroundColor: colors.secondary,
+              selectedDayTextColor: colors.headerText,
+              todayTextColor: colors.primary,
+              arrowColor: colors.primary,
+              textDisabledColor: colors.border,
             }}
           />
         </>
@@ -204,10 +219,10 @@ export default function CreateBookingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useAppThemeColors>) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F8FA',
+    backgroundColor: colors.background,
   },
 
   content: {
@@ -218,24 +233,24 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#082A55',
+    color: colors.textPrimary,
     marginBottom: 18,
   },
 
   roomCard: {
     borderRadius: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     marginBottom: 24,
   },
 
   roomName: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#082A55',
+    color: colors.textPrimary,
   },
 
   roomNumber: {
-    color: '#6B7280',
+    color: colors.textSecondary,
     marginTop: 4,
   },
 
@@ -248,25 +263,25 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#082A55',
+    color: colors.textPrimary,
   },
 
   perNight: {
-    color: '#6B7280',
+    color: colors.textSecondary,
     marginLeft: 4,
   },
 
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#082A55',
+    color: colors.textPrimary,
     marginTop: 20,
     marginBottom: 10,
   },
 
   selectedDate: {
-    backgroundColor: '#EAF0F7',
-    color: '#082A55',
+    backgroundColor: colors.surfaceVariant,
+    color: colors.textPrimary,
     padding: 12,
     borderRadius: 8,
     marginTop: 10,
@@ -276,7 +291,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     padding: 12,
     borderRadius: 12,
   },
@@ -284,19 +299,19 @@ const styles = StyleSheet.create({
   guestCount: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#082A55',
+    color: colors.textPrimary,
   },
 
   summaryCard: {
     marginTop: 24,
     borderRadius: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
 
   summaryTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#082A55',
+    color: colors.textPrimary,
     marginBottom: 16,
   },
 
@@ -313,13 +328,13 @@ const styles = StyleSheet.create({
   totalLabel: {
     fontSize: 17,
     fontWeight: '800',
-    color: '#082A55',
+    color: colors.textPrimary,
   },
 
   total: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#082A55',
+    color: colors.textPrimary,
   },
 
   confirmButton: {

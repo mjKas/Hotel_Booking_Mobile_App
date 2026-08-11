@@ -6,8 +6,12 @@ import {
   Divider,
   Text,
 } from 'react-native-paper';
+import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
 
 export default function BookingDetailsScreen() {
+  const colors = useAppThemeColors();
+  const styles = createStyles(colors);
+
   const booking = {
     id: 'BK-1024',
     status: 'CONFIRMED',
@@ -133,7 +137,7 @@ export default function BookingDetailsScreen() {
 
       <Button
         mode="outlined"
-        textColor="#D32F2F"
+        textColor={colors.error}
         style={styles.cancelButton}
         onPress={() => {}}
       >
@@ -143,10 +147,10 @@ export default function BookingDetailsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useAppThemeColors>) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F8FA',
+    backgroundColor: colors.background,
   },
 
   content: {
@@ -157,14 +161,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#082A55',
+    color: colors.textPrimary,
     marginBottom: 18,
   },
 
   card: {
     marginBottom: 15,
     borderRadius: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
 
   topRow: {
@@ -173,24 +177,24 @@ const styles = StyleSheet.create({
   },
 
   bookingId: {
-    color: '#6B7280',
+    color: colors.textSecondary,
     fontSize: 13,
   },
 
   room: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#082A55',
+    color: colors.textPrimary,
     marginTop: 5,
   },
 
   roomNumber: {
-    color: '#6B7280',
+    color: colors.textSecondary,
     marginTop: 3,
   },
 
   status: {
-    backgroundColor: '#E8F5E9',
+    backgroundColor: colors.successSurface,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 20,
@@ -198,7 +202,7 @@ const styles = StyleSheet.create({
   },
 
   statusText: {
-    color: '#2E7D32',
+    color: colors.success,
     fontSize: 12,
     fontWeight: '800',
   },
@@ -206,7 +210,7 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#082A55',
+    color: colors.textPrimary,
     marginBottom: 15,
   },
 
@@ -217,7 +221,7 @@ const styles = StyleSheet.create({
   },
 
   label: {
-    color: '#6B7280',
+    color: colors.textSecondary,
   },
 
   guestName: {
@@ -226,7 +230,7 @@ const styles = StyleSheet.create({
   },
 
   email: {
-    color: '#6B7280',
+    color: colors.textSecondary,
     marginTop: 4,
   },
 
@@ -236,17 +240,17 @@ const styles = StyleSheet.create({
 
   totalLabel: {
     fontWeight: '800',
-    color: '#082A55',
+    color: colors.textPrimary,
   },
 
   total: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#082A55',
+    color: colors.textPrimary,
   },
 
   cancelButton: {
-    borderColor: '#D32F2F',
+    borderColor: colors.error,
     borderRadius: 10,
   },
 });
