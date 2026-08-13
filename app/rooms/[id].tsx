@@ -128,6 +128,13 @@ export default function RoomDetailsScreen() {
         >
           Book This Room
         </Button>
+        <Button
+         mode="text"
+        icon="arrow-left"
+        onPress={() => router.back()}
+        >
+        Back
+        </Button>
       </View>
     </ScrollView>
   );

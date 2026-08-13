@@ -114,6 +114,13 @@ export default function RoomsScreen() {
               >
                 View Room
               </Button>
+              <Button
+                mode="text"
+                icon="arrow-left"
+                onPress={() => router.back()}
+              >
+                Back
+              </Button>
             </Card.Actions>
           </Card>
         )}

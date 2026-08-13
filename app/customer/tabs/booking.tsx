@@ -76,6 +76,13 @@ export default function CustomerBookingsScreen() {
               >
                 View
               </Button>
+            <Button
+              mode="text"
+              icon="arrow-left"
+              onPress={() => router.back()}
+            >
+              Back
+            </Button>
             </View>
           </Card.Content>
         </Card>

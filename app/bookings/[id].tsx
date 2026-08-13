@@ -1,4 +1,5 @@
 import React from 'react';
+import { router } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import {
   Button,
@@ -143,6 +144,13 @@ export default function BookingDetailsScreen() {
       >
         Cancel Booking
       </Button>
+       <Button
+               mode="text"
+              icon="arrow-left"
+              onPress={() => router.back()}
+              >
+              Back
+              </Button>
     </ScrollView>
   );
 }

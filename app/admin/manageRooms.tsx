@@ -1,18 +1,25 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
   StyleSheet,
   View,
+  useWindowDimensions,
 } from 'react-native';
+
 import {
   Button,
   Card,
   Chip,
-  Dialog,
-  Portal,
   Text,
   TextInput,
 } from 'react-native-paper';
+
 import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
 
 interface Room {
@@ -62,10 +69,18 @@ const initialRooms: Room[] = [
 export default function ManageRoomsScreen() {
   const colors = useAppThemeColors();
   const styles = createStyles(colors);
+
+  const { height: screenHeight } = useWindowDimensions();
+
   const [rooms, setRooms] = useState(initialRooms);
+
   const [editingRoomId, setEditingRoomId] =
     useState<string | null>(null);
+
   const [dialogVisible, setDialogVisible] =
+    useState(false);
+
+  const [keyboardVisible, setKeyboardVisible] =
     useState(false);
 
   const [roomNumber, setRoomNumber] = useState('');
@@ -73,25 +88,83 @@ export default function ManageRoomsScreen() {
   const [price, setPrice] = useState('');
   const [capacity, setCapacity] = useState('');
 
+  // ----------------------------------------
+  // KEYBOARD STATE
+  // ----------------------------------------
+
+  useEffect(() => {
+    const showListener = Keyboard.addListener(
+      Platform.OS === 'ios'
+        ? 'keyboardWillShow'
+        : 'keyboardDidShow',
+      () => {
+        setKeyboardVisible(true);
+      },
+    );
+
+    const hideListener = Keyboard.addListener(
+      Platform.OS === 'ios'
+        ? 'keyboardWillHide'
+        : 'keyboardDidHide',
+      () => {
+        setKeyboardVisible(false);
+      },
+    );
+
+    return () => {
+      showListener.remove();
+      hideListener.remove();
+    };
+  }, []);
+
+  // ----------------------------------------
+  // OPEN ADD
+  // ----------------------------------------
+
   const openAddRoom = () => {
+    Keyboard.dismiss();
+
     setEditingRoomId(null);
     setRoomNumber('');
     setRoomType('');
     setPrice('');
     setCapacity('');
+
     setDialogVisible(true);
   };
 
+  // ----------------------------------------
+  // OPEN EDIT
+  // ----------------------------------------
+
   const openEditRoom = (room: Room) => {
+    Keyboard.dismiss();
+
     setEditingRoomId(room.id);
     setRoomNumber(room.number);
     setRoomType(room.type);
     setPrice(String(room.price));
     setCapacity(String(room.capacity));
+
     setDialogVisible(true);
   };
 
+  // ----------------------------------------
+  // CLOSE
+  // ----------------------------------------
+
+  const closeDialog = () => {
+    Keyboard.dismiss();
+    setDialogVisible(false);
+  };
+
+  // ----------------------------------------
+  // SAVE
+  // ----------------------------------------
+
   const saveRoom = () => {
+    Keyboard.dismiss();
+
     if (editingRoomId) {
       setRooms((current) =>
         current.map((room) =>
@@ -106,23 +179,26 @@ export default function ManageRoomsScreen() {
             : room,
         ),
       );
-      setDialogVisible(false);
-      return;
+    } else {
+      setRooms((current) => [
+        ...current,
+        {
+          id: Date.now().toString(),
+          number: roomNumber,
+          type: roomType,
+          price: Number(price),
+          capacity: Number(capacity),
+          status: 'AVAILABLE',
+        },
+      ]);
     }
 
-    setRooms((current) => [
-      ...current,
-      {
-        id: Date.now().toString(),
-        number: roomNumber,
-        type: roomType,
-        price: Number(price),
-        capacity: Number(capacity),
-        status: 'AVAILABLE',
-      },
-    ]);
     setDialogVisible(false);
   };
+
+  // ----------------------------------------
+  // DELETE
+  // ----------------------------------------
 
   const deleteRoom = (id: string) => {
     setRooms((current) =>
@@ -130,177 +206,293 @@ export default function ManageRoomsScreen() {
     );
   };
 
+  // ----------------------------------------
+  // DIALOG HEIGHT
+  // ----------------------------------------
+
+  /*
+   * Closed keyboard:
+   * Larger comfortable dialog.
+   *
+   * Keyboard open:
+   * Smaller dialog so the keyboard never covers
+   * the action buttons.
+   */
+  const dialogMaxHeight = keyboardVisible
+    ? screenHeight * 0.48
+    : screenHeight * 0.70;
+
   return (
-    <>
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.title}>
-              Manage Rooms
-            </Text>
+    <View style={styles.container}>
 
-            <Text style={styles.subtitle}>
-              {rooms.length} rooms
-            </Text>
-          </View>
+      {/* =====================================
+          HEADER
+          ===================================== */}
 
-          <Button
-            mode="contained"
-            icon="plus"
-            onPress={openAddRoom}
-            compact
-            buttonColor={colors.secondary}
-            textColor="#000000"
-          >
-            Add
-          </Button>
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.title}>
+            Manage Rooms
+          </Text>
+
+          <Text style={styles.subtitle}>
+            {rooms.length} rooms
+          </Text>
         </View>
 
-        <FlatList
-          data={rooms}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => (
-            <Card style={styles.card}>
-              <Card.Content>
-                <View style={styles.roomHeader}>
-                  <View style={styles.roomNumber}>
-                    <Text style={styles.number}>
-                      {item.number}
-                    </Text>
-
-                    <Text style={styles.roomLabel}>
-                      ROOM
-                    </Text>
-                  </View>
-
-                  <Chip
-                    compact
-                    style={getStatusStyle(item.status, styles)}
-                    textStyle={getStatusTextStyle(
-                      item.status,
-                      styles,
-                    )}
-                  >
-                    {item.status}
-                  </Chip>
-                </View>
-
-                <Text style={styles.roomType}>
-                  {item.type}
-                </Text>
-
-                <View style={styles.details}>
-                  <Text>
-                    {item.capacity} Guests
-                  </Text>
-
-                  <Text style={styles.price}>
-                    ${item.price} / night
-                  </Text>
-                </View>
-
-                <View style={styles.actions}>
-                  <Button
-                    mode="outlined"
-                    textColor={colors.secondary}
-                    onPress={() => openEditRoom(item)}
-                    style={[
-                      styles.actionButton,
-                      styles.editButton,
-                    ]}
-                  >
-                    Edit
-                  </Button>
-
-                  <Button
-                    mode="outlined"
-                    textColor={colors.error}
-                    onPress={() =>
-                      deleteRoom(item.id)
-                    }
-                    style={[
-                      styles.actionButton,
-                      styles.deleteButton,
-                    ]}
-                  >
-                    Delete
-                  </Button>
-                </View>
-              </Card.Content>
-            </Card>
-          )}
-        />
+        <Button
+          mode="contained"
+          icon="plus"
+          onPress={openAddRoom}
+          compact
+          buttonColor={colors.secondary}
+          textColor="#000000"
+        >
+          Add
+        </Button>
       </View>
 
-      <Portal>
-        <Dialog
-          visible={dialogVisible}
-          onDismiss={() => setDialogVisible(false)}
+      {/* =====================================
+          ROOM LIST
+          ===================================== */}
+
+      <FlatList
+        data={rooms}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        renderItem={({ item }) => (
+          <Card style={styles.card}>
+            <Card.Content>
+
+              <View style={styles.roomHeader}>
+
+                <View style={styles.roomNumber}>
+                  <Text style={styles.number}>
+                    {item.number}
+                  </Text>
+
+                  <Text style={styles.roomLabel}>
+                    ROOM
+                  </Text>
+                </View>
+
+                <Chip
+                  compact
+                  style={getStatusStyle(
+                    item.status,
+                    styles,
+                  )}
+                  textStyle={getStatusTextStyle(
+                    item.status,
+                    styles,
+                  )}
+                >
+                  {item.status}
+                </Chip>
+
+              </View>
+
+              <Text style={styles.roomType}>
+                {item.type}
+              </Text>
+
+              <View style={styles.details}>
+                <Text
+                  style={{
+                    color: colors.textPrimary,
+                  }}
+                >
+                  {item.capacity} Guests
+                </Text>
+
+                <Text style={styles.price}>
+                  ${item.price} / night
+                </Text>
+              </View>
+
+              <View style={styles.actions}>
+
+                <Button
+                  mode="outlined"
+                  textColor={colors.secondary}
+                  onPress={() =>
+                    openEditRoom(item)
+                  }
+                  style={[
+                    styles.actionButton,
+                    styles.editButton,
+                  ]}
+                >
+                  Edit
+                </Button>
+
+                <Button
+                  mode="outlined"
+                  textColor={colors.error}
+                  onPress={() =>
+                    deleteRoom(item.id)
+                  }
+                  style={[
+                    styles.actionButton,
+                    styles.deleteButton,
+                  ]}
+                >
+                  Delete
+                </Button>
+
+              </View>
+
+            </Card.Content>
+          </Card>
+        )}
+      />
+
+      {/* =====================================
+          ADD / EDIT MODAL
+          ===================================== */}
+
+      <Modal
+        visible={dialogVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={closeDialog}
+        statusBarTranslucent
+      >
+        <KeyboardAvoidingView
+          style={styles.modalRoot}
+          behavior={
+            Platform.OS === 'ios'
+              ? 'padding'
+              : 'height'
+          }
         >
-          <Dialog.Title>
-            {editingRoomId ? 'Edit Room' : 'Add New Room'}
-          </Dialog.Title>
 
-          <Dialog.Content>
-            <TextInput
-              label="Room Number"
-              mode="outlined"
-              value={roomNumber}
-              onChangeText={setRoomNumber}
-              style={styles.dialogInput}
-            />
+          {/* BACKDROP */}
 
-            <TextInput
-              label="Room Type"
-              mode="outlined"
-              value={roomType}
-              onChangeText={setRoomType}
-              style={styles.dialogInput}
-            />
+          <Pressable
+            style={styles.modalBackdrop}
+            onPress={closeDialog}
+          />
 
-            <TextInput
-              label="Price per Night"
-              mode="outlined"
-              value={price}
-              onChangeText={setPrice}
-              keyboardType="numeric"
-              style={styles.dialogInput}
-            />
+          {/* =================================
+              ACTUAL FORM
+              ================================= */}
 
-            <TextInput
-              label="Capacity"
-              mode="outlined"
-              value={capacity}
-              onChangeText={setCapacity}
-              keyboardType="numeric"
-              style={styles.dialogInput}
-            />
-          </Dialog.Content>
+          <View
+            style={[
+              styles.formCard,
+              {
+                maxHeight: dialogMaxHeight,
+              },
+            ]}
+          >
 
-          <Dialog.Actions>
-            <Button
-              onPress={() =>
-                setDialogVisible(false)
+            {/* TITLE */}
+
+            <View style={styles.formHeader}>
+              <Text style={styles.formTitle}>
+                {editingRoomId
+                  ? 'Edit Room'
+                  : 'Add New Room'}
+              </Text>
+            </View>
+
+            {/* FORM */}
+
+            <ScrollView
+              style={styles.formScroll}
+              contentContainerStyle={
+                styles.formContent
               }
-              textColor={colors.textPrimary}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              showsVerticalScrollIndicator={false}
             >
-              Cancel
-            </Button>
 
-            <Button
-              onPress={saveRoom}
-              textColor={colors.secondary}
-            >
-              {editingRoomId ? 'Save Room' : 'Add Room'}
-            </Button>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
-    </>
+              <TextInput
+                label="Room Number"
+                mode="outlined"
+                value={roomNumber}
+                onChangeText={setRoomNumber}
+                keyboardType="number-pad"
+                returnKeyType="next"
+                style={styles.dialogInput}
+              />
+
+              <TextInput
+                label="Room Type"
+                mode="outlined"
+                value={roomType}
+                onChangeText={setRoomType}
+                returnKeyType="next"
+                style={styles.dialogInput}
+              />
+
+              <TextInput
+                label="Price per Night"
+                mode="outlined"
+                value={price}
+                onChangeText={setPrice}
+                keyboardType="decimal-pad"
+                returnKeyType="next"
+                style={styles.dialogInput}
+              />
+
+              <TextInput
+                label="Capacity"
+                mode="outlined"
+                value={capacity}
+                onChangeText={setCapacity}
+                keyboardType="number-pad"
+                returnKeyType="done"
+                onSubmitEditing={Keyboard.dismiss}
+                style={styles.dialogInput}
+              />
+
+            </ScrollView>
+
+            {/* =================================
+                ACTIONS
+                ================================= */}
+
+            <View style={styles.formActions}>
+
+              <Button
+                mode="text"
+                onPress={closeDialog}
+                textColor={colors.textPrimary}
+                style={styles.formActionButton}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                mode="text"
+                onPress={saveRoom}
+                textColor={colors.secondary}
+                style={styles.formActionButton}
+              >
+                {editingRoomId
+                  ? 'Save Room'
+                  : 'Add Room'}
+              </Button>
+
+            </View>
+
+          </View>
+
+        </KeyboardAvoidingView>
+      </Modal>
+
+    </View>
   );
 }
+
+// ==========================================
+// STATUS STYLE
+// ==========================================
 
 function getStatusStyle(
   status: Room['status'],
@@ -318,6 +510,10 @@ function getStatusStyle(
   }
 }
 
+// ==========================================
+// STATUS TEXT STYLE
+// ==========================================
+
 function getStatusTextStyle(
   status: Room['status'],
   styles: ReturnType<typeof createStyles>,
@@ -334,140 +530,262 @@ function getStatusTextStyle(
   }
 }
 
-const createStyles = (colors: ReturnType<typeof useAppThemeColors>) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
+// ==========================================
+// STYLES
+// ==========================================
 
-  header: {
-    backgroundColor: colors.primary,
-    paddingTop: 55,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
+const createStyles = (
+  colors: ReturnType<typeof useAppThemeColors>,
+) =>
+  StyleSheet.create({
 
-  title: {
-    color: colors.headerText,
-    fontSize: 25,
-    fontWeight: '800',
-  },
+    // ----------------------------------------
+    // MAIN
+    // ----------------------------------------
 
-  subtitle: {
-    color: colors.headerSubtle,
-    marginTop: 3,
-  },
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
 
-  list: {
-    padding: 16,
-    paddingBottom: 35,
-  },
+    // ----------------------------------------
+    // HEADER
+    // ----------------------------------------
 
-  card: {
-    marginBottom: 14,
-    borderRadius: 14,
-    backgroundColor: colors.surface,
-  },
+    header: {
+      backgroundColor: colors.primary,
 
-  roomHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
+      paddingTop: 55,
+      paddingHorizontal: 20,
+      paddingBottom: 20,
 
-  roomNumber: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 58,
-    height: 58,
-    borderRadius: 12,
-    backgroundColor: colors.surfaceVariant,
-  },
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
 
-  number: {
-    fontSize: 19,
-    fontWeight: '800',
-    color: colors.textPrimary,
-  },
+    title: {
+      color: colors.headerText,
+      fontSize: 25,
+      fontWeight: '800',
+    },
 
-  roomLabel: {
-    fontSize: 8,
-    color: colors.textSecondary,
-    fontWeight: '700',
-  },
+    subtitle: {
+      color: colors.headerSubtle,
+      marginTop: 3,
+      fontSize: 16,
+    },
 
-  roomType: {
-    fontSize: 19,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginTop: 14,
-  },
+    // ----------------------------------------
+    // LIST
+    // ----------------------------------------
 
-  details: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 10,
-  },
+    list: {
+      padding: 16,
+      paddingBottom: 40,
+    },
 
-  price: {
-    color: colors.textPrimary,
-    fontWeight: '700',
-  },
+    card: {
+      marginBottom: 14,
+      borderRadius: 14,
+      backgroundColor: colors.surface,
+    },
 
-  actions: {
-    flexDirection: 'row',
-    marginTop: 15,
-    gap: 10,
-  },
+    roomHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
 
-  actionButton: {
-    flex: 1,
-    borderRadius: 8,
-  },
+    roomNumber: {
+      width: 58,
+      height: 58,
 
-  editButton: {
-    borderColor: colors.secondary,
-  },
+      alignItems: 'center',
+      justifyContent: 'center',
 
-  deleteButton: {
-    borderColor: colors.error,
-  },
+      borderRadius: 12,
 
-  available: {
-    backgroundColor: colors.successSurface,
-  },
+      backgroundColor:
+        colors.surfaceVariant,
+    },
 
-  availableText: {
-    color: colors.success,
-    fontSize: 10,
-    fontWeight: '800',
-  },
+    number: {
+      fontSize: 19,
+      fontWeight: '800',
+      color: colors.textPrimary,
+    },
 
-  occupied: {
-    backgroundColor: colors.infoSurface,
-  },
+    roomLabel: {
+      fontSize: 8,
+      color: colors.textSecondary,
+      fontWeight: '700',
+    },
 
-  occupiedText: {
-    color: colors.info,
-    fontSize: 10,
-    fontWeight: '800',
-  },
+    roomType: {
+      fontSize: 19,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      marginTop: 14,
+    },
 
-  maintenance: {
-    backgroundColor: colors.errorSurface,
-  },
+    details: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginTop: 10,
+    },
 
-  maintenanceText: {
-    color: colors.error,
-    fontSize: 10,
-    fontWeight: '800',
-  },
+    price: {
+      color: colors.textPrimary,
+      fontWeight: '700',
+    },
 
-  dialogInput: {
-    marginBottom: 10,
-    backgroundColor: colors.surface,
-  },
-});
+    actions: {
+      flexDirection: 'row',
+      gap: 10,
+      marginTop: 15,
+    },
+
+    actionButton: {
+      flex: 1,
+      borderRadius: 8,
+    },
+
+    editButton: {
+      borderColor: colors.secondary,
+    },
+
+    deleteButton: {
+      borderColor: colors.error,
+    },
+
+    // ----------------------------------------
+    // STATUS
+    // ----------------------------------------
+
+    available: {
+      backgroundColor:
+        colors.successSurface,
+    },
+
+    availableText: {
+      color: colors.success,
+      fontSize: 10,
+      fontWeight: '800',
+    },
+
+    occupied: {
+      backgroundColor:
+        colors.infoSurface,
+    },
+
+    occupiedText: {
+      color: colors.info,
+      fontSize: 10,
+      fontWeight: '800',
+    },
+
+    maintenance: {
+      backgroundColor:
+        colors.errorSurface,
+    },
+
+    maintenanceText: {
+      color: colors.error,
+      fontSize: 10,
+      fontWeight: '800',
+    },
+
+    // ----------------------------------------
+    // MODAL
+    // ----------------------------------------
+
+    modalRoot: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+
+    modalBackdrop: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    },
+
+    // ----------------------------------------
+    // FORM CARD
+    // ----------------------------------------
+
+    formCard: {
+      width: '90%',
+      maxWidth: 420,
+
+      borderRadius: 28,
+
+      overflow: 'hidden',
+
+      backgroundColor: colors.surface,
+
+      elevation: 8,
+
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 5,
+      },
+      shadowOpacity: 0.25,
+      shadowRadius: 15,
+    },
+
+    formHeader: {
+      paddingHorizontal: 24,
+      paddingTop: 22,
+      paddingBottom: 14,
+    },
+
+    formTitle: {
+      fontSize: 29,
+      fontWeight: '500',
+      color: colors.textPrimary,
+    },
+
+    // ----------------------------------------
+    // FORM SCROLL
+    // ----------------------------------------
+
+    formScroll: {
+      flexGrow: 0,
+    },
+
+    formContent: {
+      paddingHorizontal: 20,
+      paddingTop: 8,
+      paddingBottom: 8,
+    },
+
+    dialogInput: {
+      marginBottom: 13,
+      backgroundColor: colors.surface,
+    },
+
+    // ----------------------------------------
+    // FORM BUTTONS
+    // ----------------------------------------
+
+    formActions: {
+      minHeight: 64,
+
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      alignItems: 'center',
+
+      paddingHorizontal: 12,
+
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+    },
+
+    formActionButton: {
+      marginLeft: 4,
+    },
+  });
