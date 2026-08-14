@@ -9,23 +9,15 @@ import {
 } from 'react-native';
 import {
   Button,
-  Chip,
   Divider,
-  IconButton,
   Surface,
   Text,
   TextInput,
 } from 'react-native-paper';
 import { router } from 'expo-router';
 
-import { useThemeColor } from '@/src/hooks/use-theme-color';
+import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
 import { ThemeModeSelector } from '@/src/components/theme-mode-selector';
-
-type BookingStatus =
-  | 'Pending'
-  | 'Confirmed'
-  | 'Cancelled'
-  | 'Completed';
 
 type Booking = {
   id: string;
@@ -35,201 +27,159 @@ type Booking = {
   checkIn: string;
   checkOut: string;
   guests: number;
-  amount: number;
-  status: BookingStatus;
+  status: 'Confirmed' | 'Pending' | 'Cancelled';
+  total: number;
 };
 
 const initialBookings: Booking[] = [
   {
-    id: 'BK-1001',
+    id: 'B001',
     guestName: 'John Smith',
     email: 'john@example.com',
-    room: 'Deluxe Room',
-    checkIn: '20 Aug 2026',
-    checkOut: '23 Aug 2026',
+    room: '101',
+    checkIn: '2026-08-20',
+    checkOut: '2026-08-23',
     guests: 2,
-    amount: 450,
     status: 'Confirmed',
+    total: 360,
   },
   {
-    id: 'BK-1002',
-    guestName: 'Sarah Wilson',
+    id: 'B002',
+    guestName: 'Sarah Williams',
     email: 'sarah@example.com',
-    room: 'Executive Suite',
-    checkIn: '25 Aug 2026',
-    checkOut: '28 Aug 2026',
-    guests: 3,
-    amount: 720,
+    room: '201',
+    checkIn: '2026-08-22',
+    checkOut: '2026-08-25',
+    guests: 4,
     status: 'Pending',
+    total: 660,
   },
   {
-    id: 'BK-1003',
-    guestName: 'David Perera',
+    id: 'B003',
+    guestName: 'David Brown',
     email: 'david@example.com',
-    room: 'Standard Room',
-    checkIn: '29 Aug 2026',
-    checkOut: '31 Aug 2026',
+    room: '102',
+    checkIn: '2026-08-18',
+    checkOut: '2026-08-20',
     guests: 2,
-    amount: 280,
     status: 'Confirmed',
+    total: 180,
   },
 ];
 
-export default function ManageBookingsScreen() {
-  const backgroundColor = useThemeColor({}, 'background');
-  const surfaceColor = useThemeColor({}, 'surface');
-  const textColor = useThemeColor({}, 'textPrimary');
-  const secondaryTextColor = useThemeColor(
-    {},
-    'textSecondary',
-  );
-  const primaryColor = useThemeColor({}, 'primary');
-  const secondaryColor = useThemeColor({}, 'secondary');
-  const borderColor = useThemeColor({}, 'border');
-  const errorColor = useThemeColor({}, 'error');
-  const successColor = useThemeColor({}, 'success');
-  const successSurface = useThemeColor(
-    {},
-    'successSurface',
-  );
-  const errorSurface = useThemeColor(
-    {},
-    'errorSurface',
-  );
-  const warningColor = useThemeColor({}, 'warning');
+export default function ManageBookings() {
+  const colors = useAppThemeColors();
+  const styles = createStyles(colors);
 
   const [bookings, setBookings] =
     useState<Booking[]>(initialBookings);
 
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<
-    BookingStatus | 'All'
-  >('All');
+  const [editingBooking, setEditingBooking] =
+    useState<Booking | null>(null);
 
-  const filteredBookings = bookings.filter((booking) => {
-    const searchValue = search.toLowerCase().trim();
+  const [guestName, setGuestName] = useState('');
+  const [email, setEmail] = useState('');
+  const [room, setRoom] = useState('');
+  const [checkIn, setCheckIn] = useState('');
+  const [checkOut, setCheckOut] = useState('');
+  const [guests, setGuests] = useState('');
+  const [status, setStatus] =
+    useState<Booking['status']>('Confirmed');
 
-    const matchesSearch =
-      !searchValue ||
-      booking.id.toLowerCase().includes(searchValue) ||
-      booking.guestName.toLowerCase().includes(searchValue) ||
-      booking.email.toLowerCase().includes(searchValue) ||
-      booking.room.toLowerCase().includes(searchValue);
+  const openEdit = (booking: Booking) => {
+    setEditingBooking(booking);
+    setGuestName(booking.guestName);
+    setEmail(booking.email);
+    setRoom(booking.room);
+    setCheckIn(booking.checkIn);
+    setCheckOut(booking.checkOut);
+    setGuests(String(booking.guests));
+    setStatus(booking.status);
+  };
 
-    const matchesStatus =
-      statusFilter === 'All' ||
-      booking.status === statusFilter;
+  const closeEdit = () => {
+    setEditingBooking(null);
+    setGuestName('');
+    setEmail('');
+    setRoom('');
+    setCheckIn('');
+    setCheckOut('');
+    setGuests('');
+    setStatus('Confirmed');
+  };
 
-    return matchesSearch && matchesStatus;
-  });
-
-  const getStatusColors = (status: BookingStatus) => {
-    switch (status) {
-      case 'Confirmed':
-      case 'Completed':
-        return {
-          background: successSurface,
-          text: successColor,
-        };
-
-      case 'Cancelled':
-        return {
-          background: errorSurface,
-          text: errorColor,
-        };
-
-      case 'Pending':
-        return {
-          background: `${secondaryColor}22`,
-          text: warningColor,
-        };
+  const saveBooking = () => {
+    if (
+      !editingBooking ||
+      !guestName.trim() ||
+      !email.trim() ||
+      !room.trim() ||
+      !checkIn.trim() ||
+      !checkOut.trim() ||
+      !guests.trim()
+    ) {
+      Alert.alert(
+        'Missing Information',
+        'Please complete all booking fields.',
+      );
+      return;
     }
-  };
 
-  const handleCreateBooking = () => {
-    router.push('/admin/create-booking');
-  };
-
-  const handleViewBooking = (booking: Booking) => {
-    Alert.alert(
-      'Booking Details',
-      `Booking: ${booking.id}\n\nGuest: ${booking.guestName}\nEmail: ${booking.email}\nRoom: ${booking.room}\nCheck-in: ${booking.checkIn}\nCheck-out: ${booking.checkOut}\nGuests: ${booking.guests}\nAmount: $${booking.amount}`,
-    );
-  };
-
-  const handleEditBooking = (booking: Booking) => {
-    router.push({
-      pathname: '/admin/edit-booking',
-      params: {
-        id: booking.id,
-      },
-    });
-  };
-
-  const handleConfirmBooking = (bookingId: string) => {
-    setBookings((currentBookings) =>
-      currentBookings.map((booking) =>
-        booking.id === bookingId
+    setBookings((current) =>
+      current.map((booking) =>
+        booking.id === editingBooking.id
           ? {
               ...booking,
-              status: 'Confirmed',
+              guestName: guestName.trim(),
+              email: email.trim(),
+              room: room.trim(),
+              checkIn: checkIn.trim(),
+              checkOut: checkOut.trim(),
+              guests: Number(guests),
+              status,
             }
           : booking,
       ),
     );
+
+    closeEdit();
   };
 
-  const handleCancelBooking = (bookingId: string) => {
-    Alert.alert(
-      'Cancel Booking',
-      'Are you sure you want to cancel this booking?',
-      [
-        {
-          text: 'No',
-          style: 'cancel',
-        },
-        {
-          text: 'Cancel Booking',
-          style: 'destructive',
-          onPress: () => {
-            setBookings((currentBookings) =>
-              currentBookings.map((booking) =>
-                booking.id === bookingId
-                  ? {
-                      ...booking,
-                      status: 'Cancelled',
-                    }
-                  : booking,
-              ),
-            );
-          },
-        },
-      ],
-    );
-  };
-
-  const handleDeleteBooking = (bookingId: string) => {
+  const deleteBooking = (id: string) => {
     Alert.alert(
       'Delete Booking',
-      'This will permanently remove the booking. Continue?',
+      'Are you sure you want to delete this booking?',
       [
         {
-          text: 'No',
+          text: 'Cancel',
           style: 'cancel',
         },
         {
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
-            setBookings((currentBookings) =>
-              currentBookings.filter(
-                (booking) => booking.id !== bookingId,
-              ),
+            setBookings((current) =>
+              current.filter((booking) => booking.id !== id),
             );
           },
         },
       ],
     );
+  };
+
+  const getStatusStyle = (
+    bookingStatus: Booking['status'],
+  ) => {
+    switch (bookingStatus) {
+      case 'Confirmed':
+        return styles.confirmedStatus;
+      case 'Pending':
+        return styles.pendingStatus;
+      case 'Cancelled':
+        return styles.cancelledStatus;
+      default:
+        return styles.pendingStatus;
+    }
   };
 
   return (
@@ -237,7 +187,7 @@ export default function ManageBookingsScreen() {
       style={[
         styles.keyboardContainer,
         {
-          backgroundColor,
+          backgroundColor: colors.background,
         },
       ]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -248,13 +198,43 @@ export default function ManageBookingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.container}>
-          <View style={styles.topBar}>
+          <View style={styles.header}>
+            <Button
+              icon="menu"
+              mode="text"
+              onPress={() => router.back()}
+              textColor={colors.textPrimary}
+              compact
+            />
+
+            <Text
+              style={[
+                styles.headerTitle,
+                {
+                  color: colors.textPrimary,
+                },
+              ]}
+            >
+              Manage Bookings
+            </Text>
+
+            <View style={styles.headerSpacer} />
+          </View>
+
+          <View
+            style={[
+              styles.hero,
+              {
+                backgroundColor: colors.secondary,
+              },
+            ]}
+          >
             <View>
               <Text
                 style={[
-                  styles.title,
+                  styles.heroTitle,
                   {
-                    color: textColor,
+                    color: colors.textPrimary,
                   },
                 ]}
               >
@@ -263,608 +243,717 @@ export default function ManageBookingsScreen() {
 
               <Text
                 style={[
-                  styles.subtitle,
+                  styles.heroSubtitle,
                   {
-                    color: secondaryTextColor,
+                    color: colors.textSecondary,
                   },
                 ]}
               >
-                View and manage hotel reservations
+                {bookings.length}{' '}
+                {bookings.length === 1
+                  ? 'booking'
+                  : 'bookings'}
               </Text>
             </View>
 
-            <ThemeModeSelector />
-          </View>
-
-          <Surface
-            elevation={2}
-            style={[
-              styles.searchCard,
-              {
-                backgroundColor: surfaceColor,
-              },
-            ]}
-          >
-            <TextInput
-              mode="flat"
-              label="Search bookings"
-              value={search}
-              onChangeText={setSearch}
-              style={[
-                styles.searchInput,
-                {
-                  backgroundColor: surfaceColor,
-                },
-              ]}
-              textColor={textColor}
-              placeholderTextColor={secondaryTextColor}
-              left={
-                <TextInput.Icon
-                  icon="magnify"
-                  color={secondaryTextColor}
-                />
-              }
-              right={
-                search ? (
-                  <TextInput.Icon
-                    icon="close"
-                    color={secondaryTextColor}
-                    onPress={() => setSearch('')}
-                  />
-                ) : undefined
-              }
-            />
-
-            <View style={styles.filterContainer}>
-              <Text
-                style={[
-                  styles.filterLabel,
-                  {
-                    color: secondaryTextColor,
-                  },
-                ]}
-              >
-                Status
-              </Text>
-
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.filterRow}
-              >
-                {(
-                  [
-                    'All',
-                    'Pending',
-                    'Confirmed',
-                    'Completed',
-                    'Cancelled',
-                  ] as const
-                ).map((status) => {
-                  const selected =
-                    statusFilter === status;
-
-                  return (
-                    <Chip
-                      key={status}
-                      selected={selected}
-                      onPress={() =>
-                        setStatusFilter(status)
-                      }
-                      style={[
-                        styles.filterChip,
-                        selected && {
-                          backgroundColor:
-                            secondaryColor,
-                        },
-                      ]}
-                      textStyle={{
-                        color: selected
-                          ? textColor
-                          : secondaryTextColor,
-                      }}
-                    >
-                      {status}
-                    </Chip>
-                  );
-                })}
-              </ScrollView>
+            <View style={styles.themeSelector}>
+              <ThemeModeSelector />
             </View>
-          </Surface>
-
-          <View style={styles.summaryRow}>
-            <Text
-              style={[
-                styles.resultText,
-                {
-                  color: secondaryTextColor,
-                },
-              ]}
-            >
-              {filteredBookings.length} booking
-              {filteredBookings.length !== 1 ? 's' : ''}
-            </Text>
-
-            <Button
-              mode="contained"
-              icon="plus"
-              onPress={handleCreateBooking}
-              buttonColor={secondaryColor}
-              textColor={textColor}
-              compact
-            >
-              New Booking
-            </Button>
           </View>
 
-          {filteredBookings.length === 0 ? (
+          {bookings.map((booking) => (
             <Surface
-              elevation={1}
+              key={booking.id}
+              elevation={2}
               style={[
-                styles.emptyCard,
+                styles.bookingCard,
                 {
-                  backgroundColor: surfaceColor,
+                  backgroundColor: colors.surface,
                 },
               ]}
             >
-              <Text
-                style={[
-                  styles.emptyTitle,
-                  {
-                    color: textColor,
-                  },
-                ]}
-              >
-                No bookings found
-              </Text>
+              <View style={styles.bookingTop}>
+                <View>
+                  <Text
+                    style={[
+                      styles.bookingId,
+                      {
+                        color: colors.textPrimary,
+                      },
+                    ]}
+                  >
+                    {booking.id}
+                  </Text>
 
-              <Text
-                style={[
-                  styles.emptyText,
-                  {
-                    color: secondaryTextColor,
-                  },
-                ]}
-              >
-                Try changing your search or status filter.
-              </Text>
-            </Surface>
-          ) : (
-            filteredBookings.map((booking) => {
-              const statusColors =
-                getStatusColors(booking.status);
+                  <Text
+                    style={[
+                      styles.bookingLabel,
+                      {
+                        color: colors.textSecondary,
+                      },
+                    ]}
+                  >
+                    BOOKING
+                  </Text>
+                </View>
 
-              return (
-                <Surface
-                  key={booking.id}
-                  elevation={2}
+                <View
                   style={[
-                    styles.bookingCard,
+                    styles.statusBadge,
+                    getStatusStyle(booking.status),
+                  ]}
+                >
+                  <Text style={styles.statusText}>
+                    {booking.status.toUpperCase()}
+                  </Text>
+                </View>
+              </View>
+
+              <Text
+                style={[
+                  styles.guestName,
+                  {
+                    color: colors.textPrimary,
+                  },
+                ]}
+              >
+                {booking.guestName}
+              </Text>
+
+              <Text
+                style={[
+                  styles.email,
+                  {
+                    color: colors.textSecondary,
+                  },
+                ]}
+              >
+                {booking.email}
+              </Text>
+
+              <Divider
+                style={[
+                  styles.divider,
+                  {
+                    backgroundColor: colors.textSecondary,
+                  },
+                ]}
+              />
+
+              <View style={styles.detailsRow}>
+                <View style={styles.detail}>
+                  <Text
+                    style={[
+                      styles.detailLabel,
+                      {
+                        color: colors.textSecondary,
+                      },
+                    ]}
+                  >
+                    ROOM
+                  </Text>
+
+                  <Text
+                    style={[
+                      styles.detailValue,
+                      {
+                        color: colors.textPrimary,
+                      },
+                    ]}
+                  >
+                    {booking.room}
+                  </Text>
+                </View>
+
+                <View style={styles.detail}>
+                  <Text
+                    style={[
+                      styles.detailLabel,
+                      {
+                        color: colors.textSecondary,
+                      },
+                    ]}
+                  >
+                    GUESTS
+                  </Text>
+
+                  <Text
+                    style={[
+                      styles.detailValue,
+                      {
+                        color: colors.textPrimary,
+                      },
+                    ]}
+                  >
+                    {booking.guests}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.detailsRow}>
+                <View style={styles.detail}>
+                  <Text
+                    style={[
+                      styles.detailLabel,
+                      {
+                        color: colors.textSecondary,
+                      },
+                    ]}
+                  >
+                    CHECK-IN
+                  </Text>
+
+                  <Text
+                    style={[
+                      styles.detailValue,
+                      {
+                        color: colors.textPrimary,
+                      },
+                    ]}
+                  >
+                    {booking.checkIn}
+                  </Text>
+                </View>
+
+                <View style={styles.detail}>
+                  <Text
+                    style={[
+                      styles.detailLabel,
+                      {
+                        color: colors.textSecondary,
+                      },
+                    ]}
+                  >
+                    CHECK-OUT
+                  </Text>
+
+                  <Text
+                    style={[
+                      styles.detailValue,
+                      {
+                        color: colors.textPrimary,
+                      },
+                    ]}
+                  >
+                    {booking.checkOut}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.totalRow}>
+                <Text
+                  style={[
+                    styles.totalLabel,
                     {
-                      backgroundColor: surfaceColor,
+                      color: colors.textSecondary,
                     },
                   ]}
                 >
-                  <View style={styles.bookingHeader}>
-                    <View>
-                      <Text
-                        style={[
-                          styles.bookingId,
-                          {
-                            color: primaryColor,
-                          },
-                        ]}
-                      >
-                        {booking.id}
-                      </Text>
+                  TOTAL
+                </Text>
 
-                      <Text
-                        style={[
-                          styles.guestName,
-                          {
-                            color: textColor,
-                          },
-                        ]}
-                      >
-                        {booking.guestName}
-                      </Text>
-                    </View>
+                <Text
+                  style={[
+                    styles.totalValue,
+                    {
+                      color: colors.textPrimary,
+                    },
+                  ]}
+                >
+                  ${booking.total}
+                </Text>
+              </View>
 
-                    <Chip
-                      compact
-                      style={[
-                        styles.statusChip,
-                        {
-                          backgroundColor:
-                            statusColors.background,
-                        },
-                      ]}
-                      textStyle={{
-                        color: statusColors.text,
-                        fontWeight: '600',
-                      }}
-                    >
-                      {booking.status}
-                    </Chip>
-                  </View>
+              <View style={styles.actionRow}>
+                <Button
+                  mode="outlined"
+                  onPress={() => openEdit(booking)}
+                  style={[
+                    styles.editButton,
+                    {
+                      borderColor: colors.secondary,
+                    },
+                  ]}
+                  textColor={colors.secondary}
+                  contentStyle={styles.buttonContent}
+                >
+                  Edit
+                </Button>
 
-                  <Divider
-                    style={[
-                      styles.divider,
-                      {
-                        backgroundColor: borderColor,
-                      },
-                    ]}
-                  />
+                <Button
+                  mode="outlined"
+                  onPress={() => deleteBooking(booking.id)}
+                  style={styles.deleteButton}
+                  textColor={colors.error}
+                  contentStyle={styles.buttonContent}
+                >
+                  Delete
+                </Button>
+              </View>
+            </Surface>
+          ))}
 
-                  <View style={styles.detailRow}>
-                    <View style={styles.detailItem}>
-                      <Text
-                        style={[
-                          styles.detailLabel,
-                          {
-                            color: secondaryTextColor,
-                          },
-                        ]}
-                      >
-                        Room
-                      </Text>
+          {editingBooking && (
+            <Surface
+              elevation={3}
+              style={[
+                styles.editCard,
+                {
+                  backgroundColor: colors.surface,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.editTitle,
+                  {
+                    color: colors.textPrimary,
+                  },
+                ]}
+              >
+                Edit Booking
+              </Text>
 
-                      <Text
-                        style={[
-                          styles.detailValue,
-                          {
-                            color: textColor,
-                          },
-                        ]}
-                      >
-                        {booking.room}
-                      </Text>
-                    </View>
+              <Text
+                style={[
+                  styles.editSubtitle,
+                  {
+                    color: colors.textSecondary,
+                  },
+                ]}
+              >
+                Update booking information
+              </Text>
 
-                    <View style={styles.detailItem}>
-                      <Text
-                        style={[
-                          styles.detailLabel,
-                          {
-                            color: secondaryTextColor,
-                          },
-                        ]}
-                      >
-                        Guests
-                      </Text>
+              <TextInput
+                mode="outlined"
+                label="Guest Name"
+                value={guestName}
+                onChangeText={setGuestName}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: colors.surface,
+                  },
+                ]}
+                textColor={colors.textPrimary}
+                outlineColor={colors.textSecondary}
+                activeOutlineColor={colors.secondary}
+              />
 
-                      <Text
-                        style={[
-                          styles.detailValue,
-                          {
-                            color: textColor,
-                          },
-                        ]}
-                      >
-                        {booking.guests}
-                      </Text>
-                    </View>
-                  </View>
+              <TextInput
+                mode="outlined"
+                label="Email"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: colors.surface,
+                  },
+                ]}
+                textColor={colors.textPrimary}
+                outlineColor={colors.textSecondary}
+                activeOutlineColor={colors.secondary}
+              />
 
-                  <View style={styles.detailRow}>
-                    <View style={styles.detailItem}>
-                      <Text
-                        style={[
-                          styles.detailLabel,
-                          {
-                            color: secondaryTextColor,
-                          },
-                        ]}
-                      >
-                        Check-in
-                      </Text>
+              <TextInput
+                mode="outlined"
+                label="Room"
+                value={room}
+                onChangeText={setRoom}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: colors.surface,
+                  },
+                ]}
+                textColor={colors.textPrimary}
+                outlineColor={colors.textSecondary}
+                activeOutlineColor={colors.secondary}
+              />
 
-                      <Text
-                        style={[
-                          styles.detailValue,
-                          {
-                            color: textColor,
-                          },
-                        ]}
-                      >
-                        {booking.checkIn}
-                      </Text>
-                    </View>
+              <TextInput
+                mode="outlined"
+                label="Check-in"
+                value={checkIn}
+                onChangeText={setCheckIn}
+                placeholder="YYYY-MM-DD"
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: colors.surface,
+                  },
+                ]}
+                textColor={colors.textPrimary}
+                outlineColor={colors.textSecondary}
+                activeOutlineColor={colors.secondary}
+              />
 
-                    <View style={styles.detailItem}>
-                      <Text
-                        style={[
-                          styles.detailLabel,
-                          {
-                            color: secondaryTextColor,
-                          },
-                        ]}
-                      >
-                        Check-out
-                      </Text>
+              <TextInput
+                mode="outlined"
+                label="Check-out"
+                value={checkOut}
+                onChangeText={setCheckOut}
+                placeholder="YYYY-MM-DD"
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: colors.surface,
+                  },
+                ]}
+                textColor={colors.textPrimary}
+                outlineColor={colors.textSecondary}
+                activeOutlineColor={colors.secondary}
+              />
 
-                      <Text
-                        style={[
-                          styles.detailValue,
-                          {
-                            color: textColor,
-                          },
-                        ]}
-                      >
-                        {booking.checkOut}
-                      </Text>
-                    </View>
-                  </View>
+              <TextInput
+                mode="outlined"
+                label="Number of Guests"
+                value={guests}
+                onChangeText={setGuests}
+                keyboardType="numeric"
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: colors.surface,
+                  },
+                ]}
+                textColor={colors.textPrimary}
+                outlineColor={colors.textSecondary}
+                activeOutlineColor={colors.secondary}
+              />
 
-                  <View style={styles.amountRow}>
-                    <Text
-                      style={[
-                        styles.detailLabel,
-                        {
-                          color: secondaryTextColor,
-                        },
-                      ]}
-                    >
-                      Total
-                    </Text>
+              <Text
+                style={[
+                  styles.statusHeading,
+                  {
+                    color: colors.textPrimary,
+                  },
+                ]}
+              >
+                Booking Status
+              </Text>
 
-                    <Text
-                      style={[
-                        styles.amount,
-                        {
-                          color: secondaryColor,
-                        },
-                      ]}
-                    >
-                      ${booking.amount.toFixed(2)}
-                    </Text>
-                  </View>
+              <View style={styles.statusButtons}>
+                {(
+                  [
+                    'Confirmed',
+                    'Pending',
+                    'Cancelled',
+                  ] as Booking['status'][]
+                ).map((item) => (
+                  <Button
+                    key={item}
+                    mode={
+                      status === item
+                        ? 'contained'
+                        : 'outlined'
+                    }
+                    onPress={() => setStatus(item)}
+                    style={styles.statusButton}
+                    buttonColor={
+                      status === item
+                        ? colors.secondary
+                        : undefined
+                    }
+                    textColor={
+                      status === item
+                        ? colors.textPrimary
+                        : colors.textSecondary
+                    }
+                  >
+                    {item}
+                  </Button>
+                ))}
+              </View>
 
-                  <Divider
-                    style={[
-                      styles.divider,
-                      {
-                        backgroundColor: borderColor,
-                      },
-                    ]}
-                  />
+              <View style={styles.editActions}>
+                <Button
+                  mode="outlined"
+                  onPress={closeEdit}
+                  style={styles.cancelButton}
+                  textColor={colors.textSecondary}
+                >
+                  Cancel
+                </Button>
 
-                  <View style={styles.actions}>
-                    <Button
-                      mode="outlined"
-                      compact
-                      onPress={() =>
-                        handleViewBooking(booking)
-                      }
-                      textColor={primaryColor}
-                    >
-                      View
-                    </Button>
-
-                    <Button
-                      mode="outlined"
-                      compact
-                      onPress={() =>
-                        handleEditBooking(booking)
-                      }
-                      textColor={primaryColor}
-                    >
-                      Edit
-                    </Button>
-
-                    {booking.status === 'Pending' && (
-                      <Button
-                        mode="contained"
-                        compact
-                        onPress={() =>
-                          handleConfirmBooking(
-                            booking.id,
-                          )
-                        }
-                        buttonColor={successColor}
-                        textColor="#FFFFFF"
-                      >
-                        Confirm
-                      </Button>
-                    )}
-
-                    {booking.status !== 'Cancelled' &&
-                      booking.status !== 'Completed' && (
-                        <Button
-                          mode="text"
-                          compact
-                          onPress={() =>
-                            handleCancelBooking(
-                              booking.id,
-                            )
-                          }
-                          textColor={errorColor}
-                        >
-                          Cancel
-                        </Button>
-                      )}
-
-                    {booking.status === 'Cancelled' && (
-                      <IconButton
-                        icon="delete-outline"
-                        iconColor={errorColor}
-                        size={22}
-                        onPress={() =>
-                          handleDeleteBooking(
-                            booking.id,
-                          )
-                        }
-                      />
-                    )}
-                  </View>
-                </Surface>
-              );
-            })
+                <Button
+                  mode="contained"
+                  onPress={saveBooking}
+                  style={styles.saveButton}
+                  buttonColor={colors.secondary}
+                  textColor={colors.textPrimary}
+                >
+                  Save Changes
+                </Button>
+              </View>
+            </Surface>
           )}
+
+          <Text
+            style={[
+              styles.footer,
+              {
+                color: colors.textSecondary,
+              },
+            ]}
+          >
+            Manage guest reservations and booking details.
+          </Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  keyboardContainer: {
-    flex: 1,
-  },
+const createStyles = (
+  colors: ReturnType<typeof useAppThemeColors>,
+) =>
+  StyleSheet.create({
+    keyboardContainer: {
+      flex: 1,
+    },
 
-  scrollContent: {
-    flexGrow: 1,
-  },
+    scrollContent: {
+      flexGrow: 1,
+    },
 
-  container: {
-    width: '100%',
-    maxWidth: 900,
-    alignSelf: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 24,
-  },
+    container: {
+      width: '100%',
+      maxWidth: 700,
+      alignSelf: 'center',
+      paddingBottom: 30,
+    },
 
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
+    header: {
+      height: 80,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 20,
+      backgroundColor: colors.primary,
+    },
 
-  title: {
-    fontSize: 28,
-    fontWeight: '800',
-  },
+    headerTitle: {
+      fontSize: 22,
+      fontWeight: '700',
+    },
 
-  subtitle: {
-    fontSize: 14,
-    marginTop: 4,
-  },
+    headerSpacer: {
+      width: 48,
+    },
 
-  searchCard: {
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 18,
-  },
+    hero: {
+      minHeight: 180,
+      paddingHorizontal: 42,
+      paddingVertical: 34,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
 
-  searchInput: {
-    marginBottom: 12,
-  },
+    heroTitle: {
+      fontSize: 40,
+      fontWeight: '800',
+    },
 
-  filterContainer: {
-    marginTop: 4,
-  },
+    heroSubtitle: {
+      fontSize: 20,
+      marginTop: 4,
+    },
 
-  filterLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
+    themeSelector: {
+      alignSelf: 'center',
+    },
 
-  filterRow: {
-    gap: 8,
-    paddingRight: 8,
-  },
+    bookingCard: {
+      marginHorizontal: 34,
+      marginTop: 28,
+      borderRadius: 24,
+      padding: 34,
+    },
 
-  filterChip: {
-    marginRight: 2,
-  },
+    bookingTop: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+    },
 
-  summaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
+    bookingId: {
+      fontSize: 30,
+      fontWeight: '800',
+    },
 
-  resultText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
+    bookingLabel: {
+      fontSize: 13,
+      fontWeight: '700',
+      marginTop: -2,
+    },
 
-  bookingCard: {
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 14,
-  },
+    statusBadge: {
+      borderRadius: 30,
+      paddingHorizontal: 22,
+      paddingVertical: 12,
+    },
 
-  bookingHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-  },
+    confirmedStatus: {
+      backgroundColor: '#164D2A',
+    },
 
-  bookingId: {
-    fontSize: 13,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
+    pendingStatus: {
+      backgroundColor: '#73520A',
+    },
 
-  guestName: {
-    fontSize: 19,
-    fontWeight: '700',
-  },
+    cancelledStatus: {
+      backgroundColor: '#642727',
+    },
 
-  statusChip: {
-    marginLeft: 10,
-  },
+    statusText: {
+      color: '#FFFFFF',
+      fontSize: 13,
+      fontWeight: '800',
+      letterSpacing: 0.5,
+    },
 
-  divider: {
-    marginVertical: 14,
-  },
+    guestName: {
+      fontSize: 26,
+      fontWeight: '700',
+      marginTop: 30,
+    },
 
-  detailRow: {
-    flexDirection: 'row',
-    marginBottom: 14,
-  },
+    email: {
+      fontSize: 16,
+      marginTop: 5,
+    },
 
-  detailItem: {
-    flex: 1,
-  },
+    divider: {
+      marginVertical: 20,
+      opacity: 0.35,
+    },
 
-  detailLabel: {
-    fontSize: 12,
-    marginBottom: 4,
-  },
+    detailsRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: 18,
+    },
 
-  detailValue: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
+    detail: {
+      width: '48%',
+    },
 
-  amountRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
+    detailLabel: {
+      fontSize: 12,
+      fontWeight: '700',
+      marginBottom: 4,
+    },
 
-  amount: {
-    fontSize: 20,
-    fontWeight: '800',
-  },
+    detailValue: {
+      fontSize: 17,
+      fontWeight: '600',
+    },
 
-  actions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
+    totalRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginTop: 6,
+      marginBottom: 24,
+    },
 
-  emptyCard: {
-    borderRadius: 16,
-    padding: 32,
-    alignItems: 'center',
-  },
+    totalLabel: {
+      fontSize: 14,
+      fontWeight: '700',
+    },
 
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
+    totalValue: {
+      fontSize: 22,
+      fontWeight: '800',
+    },
 
-  emptyText: {
-    fontSize: 14,
-    textAlign: 'center',
-  },
-});
+    actionRow: {
+      flexDirection: 'row',
+      gap: 14,
+    },
+
+    editButton: {
+      flex: 1,
+      borderWidth: 1.5,
+      borderRadius: 10,
+    },
+
+    deleteButton: {
+      flex: 1,
+      borderWidth: 1.5,
+      borderColor: colors.error,
+      borderRadius: 10,
+    },
+
+    buttonContent: {
+      height: 50,
+    },
+
+    editCard: {
+      marginHorizontal: 34,
+      marginTop: 28,
+      borderRadius: 24,
+      padding: 28,
+    },
+
+    editTitle: {
+      fontSize: 28,
+      fontWeight: '800',
+    },
+
+    editSubtitle: {
+      fontSize: 16,
+      marginTop: 4,
+      marginBottom: 22,
+    },
+
+    input: {
+      marginBottom: 14,
+    },
+
+    statusHeading: {
+      fontSize: 16,
+      fontWeight: '700',
+      marginTop: 8,
+      marginBottom: 10,
+    },
+
+    statusButtons: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+
+    statusButton: {
+      borderRadius: 10,
+    },
+
+    editActions: {
+      flexDirection: 'row',
+      gap: 12,
+      marginTop: 24,
+    },
+
+    cancelButton: {
+      flex: 1,
+      borderRadius: 10,
+    },
+
+    saveButton: {
+      flex: 1,
+      borderRadius: 10,
+    },
+
+    footer: {
+      textAlign: 'center',
+      fontSize: 14,
+      marginHorizontal: 30,
+      marginTop: 24,
+    },
+  });

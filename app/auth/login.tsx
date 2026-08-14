@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Image } from 'react-native';
 import {
   Button,
   Surface,
@@ -49,26 +49,19 @@ export default function LoginScreen() {
   return (
     <View style={styles.container}>
       <Surface style={styles.card} elevation={3}>
+
+        {/* Brand */}
         <View style={styles.brandContainer}>
-          <View
+          <Image
+            source={require('../../assets/images/royal-crest-logo.jpg')}
             style={[
               styles.brandLogo,
               {
                 backgroundColor: primaryColor,
               },
             ]}
-          >
-            <Text
-              style={[
-                styles.brandLogoText,
-                {
-                  color: secondaryColor,
-                },
-              ]}
-            >
-              A
-            </Text>
-          </View>
+            resizeMode="contain"
+          />
 
           <View style={styles.brandTextContainer}>
             <Text
@@ -106,6 +99,7 @@ export default function LoginScreen() {
           </View>
         </View>
 
+        {/* Heading */}
         <Text
           style={[
             styles.title,
@@ -128,10 +122,12 @@ export default function LoginScreen() {
           Sign in to continue
         </Text>
 
+        {/* Appearance */}
         <View style={styles.themeSelector}>
           <ThemeModeSelector />
         </View>
 
+        {/* Email */}
         <TextInput
           label="Email"
           mode="outlined"
@@ -147,6 +143,7 @@ export default function LoginScreen() {
           placeholderTextColor={colors.textSecondary}
         />
 
+        {/* Password */}
         <TextInput
           label="Password"
           mode="outlined"
@@ -162,6 +159,7 @@ export default function LoginScreen() {
           placeholderTextColor={colors.textSecondary}
         />
 
+        {/* Sign In */}
         <Button
           mode="contained"
           onPress={handleCustomerLogin}
@@ -182,6 +180,7 @@ export default function LoginScreen() {
           Sign In
         </Button>
 
+        {/* Admin Login */}
         <Button
           mode="outlined"
           onPress={handleAdminLogin}
@@ -202,6 +201,7 @@ export default function LoginScreen() {
           Demo Admin Login
         </Button>
 
+        {/* Create Account */}
         <Button
           mode="text"
           onPress={() => router.push('/auth/register')}
@@ -215,6 +215,7 @@ export default function LoginScreen() {
         >
           Create an account
         </Button>
+
       </Surface>
     </View>
   );
@@ -253,14 +254,7 @@ const createStyles = (
       width: 58,
       height: 58,
       borderRadius: 12,
-      alignItems: 'center',
-      justifyContent: 'center',
       marginRight: 12,
-    },
-
-    brandLogoText: {
-      fontSize: 32,
-      fontWeight: '800',
     },
 
     brandTextContainer: {

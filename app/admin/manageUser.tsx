@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -9,120 +10,132 @@ import {
 } from 'react-native';
 import {
   Button,
-  Chip,
-  Divider,
-  IconButton,
   Surface,
   Text,
   TextInput,
 } from 'react-native-paper';
-import { router } from 'expo-router';
 
-import { useThemeColor } from '@/src/hooks/use-theme-color';
+import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
 import { ThemeModeSelector } from '@/src/components/theme-mode-selector';
 
-type UserRole = 'Customer' | 'Admin';
-type UserStatus = 'Active' | 'Disabled';
-
 type User = {
-  id: string;
-  fullName: string;
+  id: number;
+  name: string;
   email: string;
   phone: string;
-  role: UserRole;
-  status: UserStatus;
+  role: 'Customer' | 'Admin';
 };
 
 const initialUsers: User[] = [
   {
-    id: 'USR-1001',
-    fullName: 'John Smith',
-    email: 'john@example.com',
+    id: 1,
+    name: 'John Smith',
+    email: 'john.smith@email.com',
     phone: '+94 77 123 4567',
     role: 'Customer',
-    status: 'Active',
   },
   {
-    id: 'USR-1002',
-    fullName: 'Sarah Wilson',
-    email: 'sarah@example.com',
-    phone: '+94 71 234 5678',
+    id: 2,
+    name: 'Sarah Wilson',
+    email: 'sarah.wilson@email.com',
+    phone: '+94 71 456 7890',
     role: 'Customer',
-    status: 'Active',
   },
   {
-    id: 'USR-1003',
-    fullName: 'David Perera',
-    email: 'david@example.com',
-    phone: '+94 76 345 6789',
-    role: 'Customer',
-    status: 'Disabled',
-  },
-  {
-    id: 'USR-1004',
-    fullName: 'Admin User',
-    email: 'admin@grandstay.com',
-    phone: '+94 70 111 2222',
+    id: 3,
+    name: 'Admin User',
+    email: 'admin@royalcrest.com',
+    phone: '+94 76 111 2233',
     role: 'Admin',
-    status: 'Active',
   },
 ];
 
-export default function ManageUsersScreen() {
-  const backgroundColor = useThemeColor({}, 'background');
-  const surfaceColor = useThemeColor({}, 'surface');
-  const textColor = useThemeColor({}, 'textPrimary');
-  const secondaryTextColor = useThemeColor(
-    {},
-    'textSecondary',
-  );
-  const primaryColor = useThemeColor({}, 'primary');
-  const secondaryColor = useThemeColor({}, 'secondary');
-  const borderColor = useThemeColor({}, 'border');
-  const successColor = useThemeColor({}, 'success');
-  const successSurface = useThemeColor(
-    {},
-    'successSurface',
-  );
-  const errorColor = useThemeColor({}, 'error');
-  const errorSurface = useThemeColor(
-    {},
-    'errorSurface',
-  );
+export default function ManageUser() {
+  const colors = useAppThemeColors();
+  const styles = createStyles(colors);
 
   const [users, setUsers] = useState<User[]>(initialUsers);
-  const [search, setSearch] = useState('');
 
-  const filteredUsers = users.filter((user) => {
-    const value = search.toLowerCase().trim();
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
 
-    if (!value) {
-      return true;
-    }
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [role, setRole] = useState<'Customer' | 'Admin'>(
+    'Customer',
+  );
 
-    return (
-      user.id.toLowerCase().includes(value) ||
-      user.fullName.toLowerCase().includes(value) ||
-      user.email.toLowerCase().includes(value) ||
-      user.phone.toLowerCase().includes(value) ||
-      user.role.toLowerCase().includes(value) ||
-      user.status.toLowerCase().includes(value)
-    );
-  });
+  const [submitted, setSubmitted] = useState(false);
 
-  const handleEditUser = (user: User) => {
-    router.push({
-      pathname: '/admin/edit-user',
-      params: {
-        id: user.id,
-      },
-    });
+  const openAddUser = () => {
+    setEditingUser(null);
+    setName('');
+    setEmail('');
+    setPhone('');
+    setRole('Customer');
+    setSubmitted(false);
+    setModalVisible(true);
   };
 
-  const handleDeleteUser = (user: User) => {
+  const openEditUser = (user: User) => {
+    setEditingUser(user);
+    setName(user.name);
+    setEmail(user.email);
+    setPhone(user.phone);
+    setRole(user.role);
+    setSubmitted(false);
+    setModalVisible(true);
+  };
+
+  const closeModal = () => {
+    setModalVisible(false);
+    setSubmitted(false);
+  };
+
+  const handleSave = () => {
+    setSubmitted(true);
+
+    if (!name.trim() || !email.trim()) {
+      return;
+    }
+
+    if (editingUser) {
+      setUsers((currentUsers) =>
+        currentUsers.map((user) =>
+          user.id === editingUser.id
+            ? {
+                ...user,
+                name: name.trim(),
+                email: email.trim(),
+                phone: phone.trim(),
+                role,
+              }
+            : user,
+        ),
+      );
+    } else {
+      const newUser: User = {
+        id: Date.now(),
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        role,
+      };
+
+      setUsers((currentUsers) => [
+        ...currentUsers,
+        newUser,
+      ]);
+    }
+
+    closeModal();
+  };
+
+  const handleDelete = (user: User) => {
     Alert.alert(
       'Delete User',
-      `Are you sure you want to delete ${user.fullName}?`,
+      `Are you sure you want to delete ${user.name}?`,
       [
         {
           text: 'Cancel',
@@ -134,8 +147,7 @@ export default function ManageUsersScreen() {
           onPress: () => {
             setUsers((currentUsers) =>
               currentUsers.filter(
-                (currentUser) =>
-                  currentUser.id !== user.id,
+                (item) => item.id !== user.id,
               ),
             );
           },
@@ -144,531 +156,556 @@ export default function ManageUsersScreen() {
     );
   };
 
-  const getStatusColors = (status: UserStatus) => {
-    if (status === 'Active') {
-      return {
-        background: successSurface,
-        text: successColor,
-      };
-    }
-
-    return {
-      background: errorSurface,
-      text: errorColor,
-    };
-  };
-
   return (
     <KeyboardAvoidingView
       style={[
         styles.keyboardContainer,
         {
-          backgroundColor,
+          backgroundColor: colors.background,
         },
       ]}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={
+        Platform.OS === 'ios' ? 'padding' : 'height'
+      }
     >
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.container}>
-          <View style={styles.header}>
-            <View style={styles.headerText}>
-              <Text
-                style={[
-                  styles.title,
-                  {
-                    color: textColor,
-                  },
-                ]}
-              >
-                Manage Users
-              </Text>
+        {/* Header */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.headerTitle}>
+              Manage Users
+            </Text>
 
-              <Text
-                style={[
-                  styles.subtitle,
-                  {
-                    color: secondaryTextColor,
-                  },
-                ]}
-              >
-                View and manage registered users
-              </Text>
-            </View>
-
-            <ThemeModeSelector />
-          </View>
-
-          <Surface
-            elevation={2}
-            style={[
-              styles.searchCard,
-              {
-                backgroundColor: surfaceColor,
-              },
-            ]}
-          >
-            <TextInput
-              mode="flat"
-              label="Search users"
-              value={search}
-              onChangeText={setSearch}
-              style={[
-                styles.searchInput,
-                {
-                  backgroundColor: surfaceColor,
-                },
-              ]}
-              textColor={textColor}
-              placeholderTextColor={secondaryTextColor}
-              left={
-                <TextInput.Icon
-                  icon="magnify"
-                  color={secondaryTextColor}
-                />
-              }
-              right={
-                search ? (
-                  <TextInput.Icon
-                    icon="close"
-                    color={secondaryTextColor}
-                    onPress={() => setSearch('')}
-                  />
-                ) : undefined
-              }
-            />
-          </Surface>
-
-          <View style={styles.summaryRow}>
-            <Text
-              style={[
-                styles.resultText,
-                {
-                  color: secondaryTextColor,
-                },
-              ]}
-            >
-              {filteredUsers.length} user
-              {filteredUsers.length !== 1 ? 's' : ''}
+            <Text style={styles.headerSubtitle}>
+              {users.length} users
             </Text>
           </View>
 
-          {filteredUsers.length === 0 ? (
+          <Button
+            mode="text"
+            onPress={openAddUser}
+            icon="plus"
+            textColor="#000000"
+            labelStyle={styles.addButtonLabel}
+          >
+            Add
+          </Button>
+        </View>
+
+        {/* Theme */}
+        <View style={styles.themeSelector}>
+          <ThemeModeSelector />
+        </View>
+
+        {/* Users */}
+        <View style={styles.userList}>
+          {users.map((user) => (
+            <Surface
+              key={user.id}
+              elevation={2}
+              style={styles.userCard}
+            >
+              <View style={styles.userTopRow}>
+                <View style={styles.userIcon}>
+                  <Text style={styles.userIconText}>
+                    {user.name.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+
+                <View style={styles.userInfo}>
+                  <Text style={styles.userName}>
+                    {user.name}
+                  </Text>
+
+                  <Text style={styles.userRole}>
+                    {user.role}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.userDetails}>
+                <Text style={styles.detailText}>
+                  {user.email}
+                </Text>
+
+                {user.phone ? (
+                  <Text style={styles.detailText}>
+                    {user.phone}
+                  </Text>
+                ) : null}
+              </View>
+
+              <View style={styles.actions}>
+                <Button
+                  mode="outlined"
+                  onPress={() => openEditUser(user)}
+                  style={styles.editButton}
+                  contentStyle={styles.actionContent}
+                  labelStyle={styles.editButtonLabel}
+                >
+                  Edit
+                </Button>
+
+                <Button
+                  mode="outlined"
+                  onPress={() => handleDelete(user)}
+                  style={styles.deleteButton}
+                  contentStyle={styles.actionContent}
+                  labelStyle={styles.deleteButtonLabel}
+                >
+                  Delete
+                </Button>
+              </View>
+            </Surface>
+          ))}
+
+          {users.length === 0 && (
             <Surface
               elevation={1}
-              style={[
-                styles.emptyCard,
-                {
-                  backgroundColor: surfaceColor,
-                },
-              ]}
+              style={styles.emptyCard}
             >
-              <Text
-                style={[
-                  styles.emptyTitle,
-                  {
-                    color: textColor,
-                  },
-                ]}
-              >
+              <Text style={styles.emptyTitle}>
                 No users found
               </Text>
 
-              <Text
-                style={[
-                  styles.emptyText,
-                  {
-                    color: secondaryTextColor,
-                  },
-                ]}
-              >
-                Try a different name, email, role or status.
+              <Text style={styles.emptyText}>
+                Add a new user to get started.
               </Text>
             </Surface>
-          ) : (
-            filteredUsers.map((user) => {
-              const statusColors = getStatusColors(
-                user.status,
-              );
-
-              return (
-                <Surface
-                  key={user.id}
-                  elevation={2}
-                  style={[
-                    styles.userCard,
-                    {
-                      backgroundColor: surfaceColor,
-                    },
-                  ]}
-                >
-                  <View style={styles.userHeader}>
-                    <View style={styles.userIdentity}>
-                      <View
-                        style={[
-                          styles.avatar,
-                          {
-                            backgroundColor: primaryColor,
-                          },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.avatarText,
-                            {
-                              color: '#FFFFFF',
-                            },
-                          ]}
-                        >
-                          {user.fullName
-                            .charAt(0)
-                            .toUpperCase()}
-                        </Text>
-                      </View>
-
-                      <View style={styles.nameContainer}>
-                        <Text
-                          style={[
-                            styles.userName,
-                            {
-                              color: textColor,
-                            },
-                          ]}
-                        >
-                          {user.fullName}
-                        </Text>
-
-                        <Text
-                          style={[
-                            styles.userId,
-                            {
-                              color: secondaryTextColor,
-                            },
-                          ]}
-                        >
-                          {user.id}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <Chip
-                      compact
-                      style={[
-                        styles.statusChip,
-                        {
-                          backgroundColor:
-                            statusColors.background,
-                        },
-                      ]}
-                      textStyle={{
-                        color: statusColors.text,
-                        fontWeight: '600',
-                      }}
-                    >
-                      {user.status}
-                    </Chip>
-                  </View>
-
-                  <Divider
-                    style={[
-                      styles.divider,
-                      {
-                        backgroundColor: borderColor,
-                      },
-                    ]}
-                  />
-
-                  <View style={styles.infoRow}>
-                    <View style={styles.infoItem}>
-                      <Text
-                        style={[
-                          styles.infoLabel,
-                          {
-                            color: secondaryTextColor,
-                          },
-                        ]}
-                      >
-                        Email
-                      </Text>
-
-                      <Text
-                        style={[
-                          styles.infoValue,
-                          {
-                            color: textColor,
-                          },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {user.email}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.infoRow}>
-                    <View style={styles.infoItem}>
-                      <Text
-                        style={[
-                          styles.infoLabel,
-                          {
-                            color: secondaryTextColor,
-                          },
-                        ]}
-                      >
-                        Phone
-                      </Text>
-
-                      <Text
-                        style={[
-                          styles.infoValue,
-                          {
-                            color: textColor,
-                          },
-                        ]}
-                      >
-                        {user.phone || 'Not provided'}
-                      </Text>
-                    </View>
-
-                    <View style={styles.infoItemSmall}>
-                      <Text
-                        style={[
-                          styles.infoLabel,
-                          {
-                            color: secondaryTextColor,
-                          },
-                        ]}
-                      >
-                        Role
-                      </Text>
-
-                      <Chip
-                        compact
-                        style={[
-                          styles.roleChip,
-                          {
-                            backgroundColor: `${secondaryColor}22`,
-                          },
-                        ]}
-                        textStyle={{
-                          color: secondaryColor,
-                          fontWeight: '600',
-                        }}
-                      >
-                        {user.role}
-                      </Chip>
-                    </View>
-                  </View>
-
-                  <Divider
-                    style={[
-                      styles.divider,
-                      {
-                        backgroundColor: borderColor,
-                      },
-                    ]}
-                  />
-
-                  <View style={styles.actions}>
-                    <Button
-                      mode="outlined"
-                      compact
-                      icon="pencil-outline"
-                      onPress={() =>
-                        handleEditUser(user)
-                      }
-                      textColor={primaryColor}
-                      style={styles.editButton}
-                    >
-                      Edit
-                    </Button>
-
-                    <IconButton
-                      icon="delete-outline"
-                      iconColor={errorColor}
-                      size={23}
-                      onPress={() =>
-                        handleDeleteUser(user)
-                      }
-                    />
-                  </View>
-                </Surface>
-              );
-            })
           )}
         </View>
       </ScrollView>
+
+      {/* Add / Edit Modal */}
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={closeModal}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalContainer}
+          behavior={
+            Platform.OS === 'ios'
+              ? 'padding'
+              : undefined
+          }
+        >
+          <View style={styles.modalOverlay}>
+            <Surface
+              elevation={5}
+              style={styles.modalCard}
+            >
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <Text style={styles.modalTitle}>
+                  {editingUser
+                    ? 'Edit User'
+                    : 'Add User'}
+                </Text>
+
+                <Text style={styles.modalSubtitle}>
+                  {editingUser
+                    ? 'Update the user information'
+                    : 'Create a new user account'}
+                </Text>
+
+                <TextInput
+                  mode="outlined"
+                  label="Full Name"
+                  value={name}
+                  onChangeText={setName}
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                  style={styles.modalInput}
+                  error={
+                    submitted && !name.trim()
+                  }
+                  textColor={colors.textPrimary}
+                  outlineColor={colors.textFieldOutline}
+                  activeOutlineColor={
+                    colors.textFieldActiveOutline
+                  }
+                  placeholderTextColor={
+                    colors.textFieldPlaceholder
+                  }
+                />
+
+                {submitted && !name.trim() && (
+                  <Text style={styles.errorText}>
+                    Please enter the user's name.
+                  </Text>
+                )}
+
+                <TextInput
+                  mode="outlined"
+                  label="Email Address"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  style={styles.modalInput}
+                  error={
+                    submitted && !email.trim()
+                  }
+                  textColor={colors.textPrimary}
+                  outlineColor={colors.textFieldOutline}
+                  activeOutlineColor={
+                    colors.textFieldActiveOutline
+                  }
+                  placeholderTextColor={
+                    colors.textFieldPlaceholder
+                  }
+                />
+
+                {submitted && !email.trim() && (
+                  <Text style={styles.errorText}>
+                    Please enter the user's email.
+                  </Text>
+                )}
+
+                <TextInput
+                  mode="outlined"
+                  label="Phone Number"
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
+                  autoCorrect={false}
+                  style={styles.modalInput}
+                  textColor={colors.textPrimary}
+                  outlineColor={colors.textFieldOutline}
+                  activeOutlineColor={
+                    colors.textFieldActiveOutline
+                  }
+                  placeholderTextColor={
+                    colors.textFieldPlaceholder
+                  }
+                />
+
+                <Text style={styles.roleLabel}>
+                  User Role
+                </Text>
+
+                <View style={styles.roleContainer}>
+                  <Button
+                    mode={
+                      role === 'Customer'
+                        ? 'contained'
+                        : 'outlined'
+                    }
+                    onPress={() =>
+                      setRole('Customer')
+                    }
+                    style={styles.roleButton}
+                    buttonColor={
+                      role === 'Customer'
+                        ? colors.secondary
+                        : undefined
+                    }
+                    textColor={
+                      role === 'Customer'
+                        ? colors.textPrimary
+                        : colors.textPrimary
+                    }
+                  >
+                    Customer
+                  </Button>
+
+                  <Button
+                    mode={
+                      role === 'Admin'
+                        ? 'contained'
+                        : 'outlined'
+                    }
+                    onPress={() =>
+                      setRole('Admin')
+                    }
+                    style={styles.roleButton}
+                    buttonColor={
+                      role === 'Admin'
+                        ? colors.secondary
+                        : undefined
+                    }
+                    textColor={
+                      colors.textPrimary
+                    }
+                  >
+                    Admin
+                  </Button>
+                </View>
+
+                <Button
+                  mode="contained"
+                  onPress={handleSave}
+                  style={styles.saveButton}
+                  contentStyle={styles.saveButtonContent}
+                  buttonColor={colors.secondary}
+                  textColor={colors.textPrimary}
+                >
+                  {editingUser
+                    ? 'Save Changes'
+                    : 'Add User'}
+                </Button>
+
+                <Button
+                  mode="text"
+                  onPress={closeModal}
+                  style={styles.cancelButton}
+                  textColor={colors.textSecondary}
+                >
+                  Cancel
+                </Button>
+              </ScrollView>
+            </Surface>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  keyboardContainer: {
-    flex: 1,
-  },
+const createStyles = (
+  colors: ReturnType<typeof useAppThemeColors>,
+) =>
+  StyleSheet.create({
+    keyboardContainer: {
+      flex: 1,
+    },
 
-  scrollContent: {
-    flexGrow: 1,
-  },
+    scrollContent: {
+      paddingBottom: 40,
+    },
 
-  container: {
-    width: '100%',
-    maxWidth: 900,
-    alignSelf: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 24,
-  },
+    header: {
+      backgroundColor: colors.secondary,
+      paddingHorizontal: 42,
+      paddingTop: 42,
+      paddingBottom: 36,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
 
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
+    headerTitle: {
+      color: '#FFFFFF',
+      fontSize: 34,
+      fontWeight: '800',
+    },
 
-  headerText: {
-    flex: 1,
-    marginRight: 16,
-  },
+    headerSubtitle: {
+      color: '#FFFFFF',
+      fontSize: 18,
+      marginTop: 4,
+    },
 
-  title: {
-    fontSize: 28,
-    fontWeight: '800',
-  },
+    addButtonLabel: {
+      color: '#000000',
+      fontSize: 18,
+      fontWeight: '500',
+    },
 
-  subtitle: {
-    fontSize: 14,
-    marginTop: 4,
-  },
+    themeSelector: {
+      paddingHorizontal: 34,
+      paddingTop: 18,
+      paddingBottom: 8,
+    },
 
-  searchCard: {
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 18,
-  },
+    userList: {
+      paddingHorizontal: 34,
+      paddingTop: 18,
+      gap: 18,
+    },
 
-  searchInput: {
-    marginBottom: 0,
-  },
+    userCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 24,
+      padding: 28,
+    },
 
-  summaryRow: {
-    marginBottom: 14,
-  },
+    userTopRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
 
-  resultText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
+    userIcon: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 18,
+    },
 
-  userCard: {
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 14,
-  },
+    userIconText: {
+      color: '#FFFFFF',
+      fontSize: 26,
+      fontWeight: '800',
+    },
 
-  userHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
+    userInfo: {
+      flex: 1,
+    },
 
-  userIdentity: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
+    userName: {
+      color: colors.textPrimary,
+      fontSize: 24,
+      fontWeight: '800',
+    },
 
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
+    userRole: {
+      color: colors.secondary,
+      fontSize: 15,
+      fontWeight: '700',
+      marginTop: 3,
+      textTransform: 'uppercase',
+    },
 
-  avatarText: {
-    fontSize: 20,
-    fontWeight: '700',
-  },
+    userDetails: {
+      marginTop: 22,
+      gap: 8,
+    },
 
-  nameContainer: {
-    flex: 1,
-  },
+    detailText: {
+      color: colors.textSecondary,
+      fontSize: 16,
+    },
 
-  userName: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
+    actions: {
+      flexDirection: 'row',
+      gap: 16,
+      marginTop: 24,
+    },
 
-  userId: {
-    fontSize: 12,
-    marginTop: 3,
-  },
+    editButton: {
+      flex: 1,
+      borderColor: colors.secondary,
+      borderWidth: 1.5,
+      borderRadius: 12,
+    },
 
-  statusChip: {
-    marginLeft: 10,
-  },
+    deleteButton: {
+      flex: 1,
+      borderColor: '#FF8A8A',
+      borderWidth: 1.5,
+      borderRadius: 12,
+    },
 
-  divider: {
-    marginVertical: 14,
-  },
+    actionContent: {
+      height: 50,
+    },
 
-  infoRow: {
-    flexDirection: 'row',
-    marginBottom: 12,
-  },
+    editButtonLabel: {
+      color: colors.secondary,
+      fontSize: 17,
+      fontWeight: '600',
+    },
 
-  infoItem: {
-    flex: 1,
-  },
+    deleteButtonLabel: {
+      color: '#FF8A8A',
+      fontSize: 17,
+      fontWeight: '600',
+    },
 
-  infoItemSmall: {
-    width: 120,
-    marginLeft: 12,
-  },
+    emptyCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 20,
+      padding: 30,
+      alignItems: 'center',
+    },
 
-  infoLabel: {
-    fontSize: 12,
-    marginBottom: 4,
-  },
+    emptyTitle: {
+      color: colors.textPrimary,
+      fontSize: 22,
+      fontWeight: '700',
+    },
 
-  infoValue: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
+    emptyText: {
+      color: colors.textSecondary,
+      fontSize: 16,
+      marginTop: 8,
+    },
 
-  roleChip: {
-    alignSelf: 'flex-start',
-  },
+    modalContainer: {
+      flex: 1,
+    },
 
-  actions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-  },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.55)',
+      justifyContent: 'flex-end',
+    },
 
-  editButton: {
-    marginRight: 4,
-  },
+    modalCard: {
+      backgroundColor: colors.surface,
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+      paddingHorizontal: 24,
+      paddingTop: 28,
+      paddingBottom: 36,
+      maxHeight: '90%',
+    },
 
-  emptyCard: {
-    borderRadius: 16,
-    padding: 32,
-    alignItems: 'center',
-  },
+    modalTitle: {
+      color: colors.textPrimary,
+      fontSize: 28,
+      fontWeight: '800',
+    },
 
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
+    modalSubtitle: {
+      color: colors.textSecondary,
+      fontSize: 15,
+      marginTop: 5,
+      marginBottom: 24,
+    },
 
-  emptyText: {
-    fontSize: 14,
-    textAlign: 'center',
-  },
-});
+    modalInput: {
+      marginBottom: 12,
+      backgroundColor: colors.surface,
+    },
+
+    errorText: {
+      color: colors.error,
+      fontSize: 13,
+      marginBottom: 8,
+      marginTop: -6,
+    },
+
+    roleLabel: {
+      color: colors.textPrimary,
+      fontSize: 16,
+      fontWeight: '600',
+      marginTop: 8,
+      marginBottom: 10,
+    },
+
+    roleContainer: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+
+    roleButton: {
+      flex: 1,
+      borderRadius: 10,
+    },
+
+    saveButton: {
+      marginTop: 26,
+      borderRadius: 10,
+    },
+
+    saveButtonContent: {
+      height: 50,
+    },
+
+    cancelButton: {
+      marginTop: 4,
+    },
+  });

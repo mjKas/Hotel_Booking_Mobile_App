@@ -23,7 +23,6 @@ export default function RegisterScreen() {
   const backgroundColor = useThemeColor({}, 'background');
   const surfaceColor = useThemeColor({}, 'surface');
 
-  const textColor = useThemeColor({}, 'text');
   const textPrimaryColor = useThemeColor({}, 'textPrimary');
   const textSecondaryColor = useThemeColor({}, 'textSecondary');
 
@@ -97,8 +96,6 @@ export default function RegisterScreen() {
     };
 
     console.log('Registration:', values);
-
-    // Connect this to your Spring Boot registration API.
   };
 
   const inputStyle = {
@@ -130,9 +127,10 @@ export default function RegisterScreen() {
               },
             ]}
           >
+            {/* Brand */}
             <View style={styles.brandContainer}>
               <Image
-                source={require('@/assets/images/royal-crest-logo.png')}
+                source={require('../../assets/images/royal-crest-logo.jpg')}
                 style={styles.brandLogo}
                 resizeMode="contain"
               />
@@ -173,11 +171,12 @@ export default function RegisterScreen() {
               </View>
             </View>
 
+            {/* Heading */}
             <Text
               style={[
                 styles.title,
                 {
-                  color: textColor,
+                  color: textPrimaryColor,
                 },
               ]}
             >
@@ -195,10 +194,12 @@ export default function RegisterScreen() {
               Create an account to get started
             </Text>
 
+            {/* Appearance */}
             <View style={styles.themeSelector}>
               <ThemeModeSelector />
             </View>
 
+            {/* Full Name */}
             <TextInput
               mode="flat"
               label="Full Name"
@@ -226,6 +227,7 @@ export default function RegisterScreen() {
               </HelperText>
             )}
 
+            {/* Email */}
             <TextInput
               mode="flat"
               label="Email Address"
@@ -265,6 +267,7 @@ export default function RegisterScreen() {
                 </HelperText>
               )}
 
+            {/* Phone */}
             <TextInput
               mode="flat"
               label="Phone Number (Optional)"
@@ -285,6 +288,7 @@ export default function RegisterScreen() {
               placeholderTextColor={textFieldPlaceholder}
             />
 
+            {/* Password */}
             <TextInput
               mode="flat"
               label="Password"
@@ -326,6 +330,7 @@ export default function RegisterScreen() {
               </HelperText>
             )}
 
+            {/* Confirm Password */}
             <TextInput
               mode="flat"
               label="Confirm Password"
@@ -369,6 +374,7 @@ export default function RegisterScreen() {
               </HelperText>
             )}
 
+            {/* Create Account */}
             <Button
               mode="contained"
               onPress={handleRegister}
@@ -389,6 +395,7 @@ export default function RegisterScreen() {
               Create Account
             </Button>
 
+            {/* Sign In */}
             <View style={styles.loginRow}>
               <Text
                 variant="bodyMedium"
@@ -410,6 +417,7 @@ export default function RegisterScreen() {
             </View>
           </Surface>
 
+          {/* Privacy Notice */}
           <Text
             variant="bodySmall"
             style={[
@@ -462,6 +470,7 @@ const styles = StyleSheet.create({
   brandLogo: {
     width: 58,
     height: 58,
+    borderRadius: 12,
     marginRight: 12,
   },
 
