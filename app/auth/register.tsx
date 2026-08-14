@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -19,17 +20,15 @@ import { useThemeColor } from '@/src/hooks/use-theme-color';
 import { ThemeModeSelector } from '@/src/components/theme-mode-selector';
 
 export default function RegisterScreen() {
-  // Theme colors
   const backgroundColor = useThemeColor({}, 'background');
   const surfaceColor = useThemeColor({}, 'surface');
 
   const textColor = useThemeColor({}, 'text');
   const textPrimaryColor = useThemeColor({}, 'textPrimary');
   const textSecondaryColor = useThemeColor({}, 'textSecondary');
-  const primaryColor = useThemeColor({}, 'primary');
+
   const secondaryColor = useThemeColor({}, 'secondary');
 
-  // Text field theme colors
   const textFieldBackground = useThemeColor(
     {},
     'textFieldBackground',
@@ -55,7 +54,6 @@ export default function RegisterScreen() {
     'textFieldPlaceholder',
   );
 
-  // Form state
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -68,7 +66,6 @@ export default function RegisterScreen() {
 
   const [submitted, setSubmitted] = useState(false);
 
-  // Validation
   const isEmailValid =
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
@@ -99,13 +96,9 @@ export default function RegisterScreen() {
       password,
     };
 
-    // TODO:
-    // Connect this to your Spring Boot registration API.
-    //
-    // Example:
-    // await registerUser(values);
-
     console.log('Registration:', values);
+
+    // Connect this to your Spring Boot registration API.
   };
 
   const inputStyle = {
@@ -128,8 +121,6 @@ export default function RegisterScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.container}>
-
-          {/* Registration Card */}
           <Surface
             elevation={3}
             style={[
@@ -139,19 +130,49 @@ export default function RegisterScreen() {
               },
             ]}
           >
-            {/* Brand */}
-            <Text
-              style={[
-                styles.brand,
-                {
-                  color: secondaryColor,
-                },
-              ]}
-            >
-              GrandStay
-            </Text>
+            <View style={styles.brandContainer}>
+              <Image
+                source={require('@/assets/images/royal-crest-logo.png')}
+                style={styles.brandLogo}
+                resizeMode="contain"
+              />
 
-            {/* Heading */}
+              <View style={styles.brandTextContainer}>
+                <Text
+                  style={[
+                    styles.brandName,
+                    {
+                      color: textPrimaryColor,
+                    },
+                  ]}
+                >
+                  Royal Crest
+                </Text>
+
+                <Text
+                  style={[
+                    styles.brandHotel,
+                    {
+                      color: textPrimaryColor,
+                    },
+                  ]}
+                >
+                  Hotel
+                </Text>
+
+                <Text
+                  style={[
+                    styles.brandReservations,
+                    {
+                      color: textSecondaryColor,
+                    },
+                  ]}
+                >
+                  RESERVATIONS
+                </Text>
+              </View>
+            </View>
+
             <Text
               style={[
                 styles.title,
@@ -163,7 +184,6 @@ export default function RegisterScreen() {
               Create Account
             </Text>
 
-            {/* Subtitle */}
             <Text
               style={[
                 styles.subtitle,
@@ -175,12 +195,10 @@ export default function RegisterScreen() {
               Create an account to get started
             </Text>
 
-            {/* Appearance */}
             <View style={styles.themeSelector}>
               <ThemeModeSelector />
             </View>
 
-            {/* Full Name */}
             <TextInput
               mode="flat"
               label="Full Name"
@@ -194,21 +212,12 @@ export default function RegisterScreen() {
                   color={textFieldPlaceholder}
                 />
               }
-              error={
-                submitted && !fullName.trim()
-              }
-              style={[
-                styles.input,
-                inputStyle,
-              ]}
+              error={submitted && !fullName.trim()}
+              style={[styles.input, inputStyle]}
               outlineColor={textFieldOutline}
-              activeOutlineColor={
-                textFieldActiveOutline
-              }
+              activeOutlineColor={textFieldActiveOutline}
               textColor={textFieldText}
-              placeholderTextColor={
-                textFieldPlaceholder
-              }
+              placeholderTextColor={textFieldPlaceholder}
             />
 
             {submitted && !fullName.trim() && (
@@ -217,7 +226,6 @@ export default function RegisterScreen() {
               </HelperText>
             )}
 
-            {/* Email */}
             <TextInput
               mode="flat"
               label="Email Address"
@@ -236,18 +244,11 @@ export default function RegisterScreen() {
                 submitted &&
                 (!email.trim() || !isEmailValid)
               }
-              style={[
-                styles.input,
-                inputStyle,
-              ]}
+              style={[styles.input, inputStyle]}
               outlineColor={textFieldOutline}
-              activeOutlineColor={
-                textFieldActiveOutline
-              }
+              activeOutlineColor={textFieldActiveOutline}
               textColor={textFieldText}
-              placeholderTextColor={
-                textFieldPlaceholder
-              }
+              placeholderTextColor={textFieldPlaceholder}
             />
 
             {submitted && !email.trim() && (
@@ -264,7 +265,6 @@ export default function RegisterScreen() {
                 </HelperText>
               )}
 
-            {/* Phone */}
             <TextInput
               mode="flat"
               label="Phone Number (Optional)"
@@ -278,21 +278,13 @@ export default function RegisterScreen() {
                   color={textFieldPlaceholder}
                 />
               }
-              style={[
-                styles.input,
-                inputStyle,
-              ]}
+              style={[styles.input, inputStyle]}
               outlineColor={textFieldOutline}
-              activeOutlineColor={
-                textFieldActiveOutline
-              }
+              activeOutlineColor={textFieldActiveOutline}
               textColor={textFieldText}
-              placeholderTextColor={
-                textFieldPlaceholder
-              }
+              placeholderTextColor={textFieldPlaceholder}
             />
 
-            {/* Password */}
             <TextInput
               mode="flat"
               label="Password"
@@ -320,21 +312,12 @@ export default function RegisterScreen() {
                   }
                 />
               }
-              error={
-                submitted && !isPasswordValid
-              }
-              style={[
-                styles.input,
-                inputStyle,
-              ]}
+              error={submitted && !isPasswordValid}
+              style={[styles.input, inputStyle]}
               outlineColor={textFieldOutline}
-              activeOutlineColor={
-                textFieldActiveOutline
-              }
+              activeOutlineColor={textFieldActiveOutline}
               textColor={textFieldText}
-              placeholderTextColor={
-                textFieldPlaceholder
-              }
+              placeholderTextColor={textFieldPlaceholder}
             />
 
             {submitted && !isPasswordValid && (
@@ -343,7 +326,6 @@ export default function RegisterScreen() {
               </HelperText>
             )}
 
-            {/* Confirm Password */}
             <TextInput
               mode="flat"
               label="Confirm Password"
@@ -373,21 +355,12 @@ export default function RegisterScreen() {
                   }
                 />
               }
-              error={
-                submitted && !passwordsMatch
-              }
-              style={[
-                styles.input,
-                inputStyle,
-              ]}
+              error={submitted && !passwordsMatch}
+              style={[styles.input, inputStyle]}
               outlineColor={textFieldOutline}
-              activeOutlineColor={
-                textFieldActiveOutline
-              }
+              activeOutlineColor={textFieldActiveOutline}
               textColor={textFieldText}
-              placeholderTextColor={
-                textFieldPlaceholder
-              }
+              placeholderTextColor={textFieldPlaceholder}
             />
 
             {submitted && !passwordsMatch && (
@@ -396,7 +369,6 @@ export default function RegisterScreen() {
               </HelperText>
             )}
 
-            {/* Create Account Button */}
             <Button
               mode="contained"
               onPress={handleRegister}
@@ -406,9 +378,7 @@ export default function RegisterScreen() {
                   backgroundColor: secondaryColor,
                 },
               ]}
-              contentStyle={
-                styles.registerButtonContent
-              }
+              contentStyle={styles.registerButtonContent}
               labelStyle={[
                 styles.registerButtonLabel,
                 {
@@ -419,7 +389,6 @@ export default function RegisterScreen() {
               Create Account
             </Button>
 
-            {/* Login Link */}
             <View style={styles.loginRow}>
               <Text
                 variant="bodyMedium"
@@ -433,9 +402,7 @@ export default function RegisterScreen() {
               <Button
                 mode="text"
                 compact
-                onPress={() =>
-                  router.replace('/login')
-                }
+                onPress={() => router.replace('/auth/login')}
                 textColor={secondaryColor}
               >
                 Sign In
@@ -443,7 +410,6 @@ export default function RegisterScreen() {
             </View>
           </Surface>
 
-          {/* Privacy Notice */}
           <Text
             variant="bodySmall"
             style={[
@@ -453,8 +419,8 @@ export default function RegisterScreen() {
               },
             ]}
           >
-            Your information is securely protected and
-            will only be used to provide our services.
+            Your information is securely protected and will
+            only be used to provide our services.
           </Text>
         </View>
       </ScrollView>
@@ -486,15 +452,42 @@ const styles = StyleSheet.create({
     paddingVertical: 28,
   },
 
-  /* Brand */
-  brand: {
-    fontSize: 34,
-    fontWeight: '800',
-    textAlign: 'center',
-    marginBottom: 18,
+  brandContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 28,
   },
 
-  /* Heading */
+  brandLogo: {
+    width: 58,
+    height: 58,
+    marginRight: 12,
+  },
+
+  brandTextContainer: {
+    justifyContent: 'center',
+  },
+
+  brandName: {
+    fontSize: 20,
+    fontWeight: '800',
+    lineHeight: 22,
+  },
+
+  brandHotel: {
+    fontSize: 20,
+    fontWeight: '800',
+    lineHeight: 22,
+  },
+
+  brandReservations: {
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 2,
+    marginTop: 2,
+  },
+
   title: {
     fontSize: 30,
     fontWeight: '700',
@@ -502,24 +495,20 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
 
-  /* Subtitle */
   subtitle: {
     fontSize: 16,
     textAlign: 'center',
     marginBottom: 24,
   },
 
-  /* Appearance */
   themeSelector: {
     marginBottom: 22,
   },
 
-  /* Inputs */
   input: {
     marginBottom: 4,
   },
 
-  /* Button */
   registerButton: {
     marginTop: 18,
     borderRadius: 10,
@@ -534,7 +523,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  /* Login */
   loginRow: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -542,7 +530,6 @@ const styles = StyleSheet.create({
     marginTop: 18,
   },
 
-  /* Privacy */
   footerText: {
     textAlign: 'center',
     marginTop: 20,
