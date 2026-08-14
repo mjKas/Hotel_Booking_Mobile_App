@@ -1,247 +1,551 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
 import {
-  Text,
   Button,
-  Chip,
-  Divider,
+  HelperText,
+  Surface,
+  Text,
+  TextInput,
 } from 'react-native-paper';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
+import { router } from 'expo-router';
 
-const room = {
-  id: '1',
-  roomNumber: '101',
-  type: 'Deluxe Room',
-  price: 120,
-  capacity: 2,
-  description:
-    'Enjoy a comfortable and relaxing stay in our beautifully designed Deluxe Room. The room combines modern facilities with a warm and welcoming atmosphere.',
-  images: [
-    'https://images.unsplash.com/photo-1611892440504-42a792e24d32',
-    'https://images.unsplash.com/photo-1590490360182-c33d57733427',
-  ],
-  amenities: [
-    'Free WiFi',
-    'Air Conditioning',
-    'Smart TV',
-    'Private Bathroom',
-    'Mini Bar',
-    'Room Service',
-  ],
-};
+import { useThemeColor } from '@/src/hooks/use-theme-color';
+import { ThemeModeSelector } from '@/src/components/theme-mode-selector';
 
-export default function RoomDetailsScreen() {
-  const colors = useAppThemeColors();
-  const styles = createStyles(colors);
+export default function RegisterScreen() {
+  // Theme colors
+  const backgroundColor = useThemeColor({}, 'background');
+  const surfaceColor = useThemeColor({}, 'surface');
 
-  useLocalSearchParams();
+  const textColor = useThemeColor({}, 'text');
+  const textPrimaryColor = useThemeColor({}, 'textPrimary');
+  const textSecondaryColor = useThemeColor({}, 'textSecondary');
+  const primaryColor = useThemeColor({}, 'primary');
+  const secondaryColor = useThemeColor({}, 'secondary');
+
+  // Text field theme colors
+  const textFieldBackground = useThemeColor(
+    {},
+    'textFieldBackground',
+  );
+
+  const textFieldOutline = useThemeColor(
+    {},
+    'textFieldOutline',
+  );
+
+  const textFieldActiveOutline = useThemeColor(
+    {},
+    'textFieldActiveOutline',
+  );
+
+  const textFieldText = useThemeColor(
+    {},
+    'textFieldText',
+  );
+
+  const textFieldPlaceholder = useThemeColor(
+    {},
+    'textFieldPlaceholder',
+  );
+
+  // Form state
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] =
+    useState(false);
+
+  const [submitted, setSubmitted] = useState(false);
+
+  // Validation
+  const isEmailValid =
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  const isPasswordValid = password.length >= 8;
+
+  const passwordsMatch =
+    password.length > 0 &&
+    confirmPassword.length > 0 &&
+    password === confirmPassword;
+
+  const handleRegister = () => {
+    setSubmitted(true);
+
+    if (
+      !fullName.trim() ||
+      !email.trim() ||
+      !isEmailValid ||
+      !isPasswordValid ||
+      !passwordsMatch
+    ) {
+      return;
+    }
+
+    const values = {
+      fullName: fullName.trim(),
+      email: email.trim(),
+      phone: phone.trim() || undefined,
+      password,
+    };
+
+    // TODO:
+    // Connect this to your Spring Boot registration API.
+    //
+    // Example:
+    // await registerUser(values);
+
+    console.log('Registration:', values);
+  };
+
+  const inputStyle = {
+    backgroundColor: textFieldBackground,
+  };
 
   return (
-    <ScrollView
-      style={styles.container}
-      showsVerticalScrollIndicator={false}
+    <KeyboardAvoidingView
+      style={[
+        styles.keyboardContainer,
+        {
+          backgroundColor,
+        },
+      ]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        {room.images.map((image, index) => (
-          <View key={index}>
-            <View style={styles.imageContainer}>
-              <Text style={styles.imageNumber}>
-                {index + 1} / {room.images.length}
+        <View style={styles.container}>
+
+          {/* Registration Card */}
+          <Surface
+            elevation={3}
+            style={[
+              styles.card,
+              {
+                backgroundColor: surfaceColor,
+              },
+            ]}
+          >
+            {/* Brand */}
+            <Text
+              style={[
+                styles.brand,
+                {
+                  color: secondaryColor,
+                },
+              ]}
+            >
+              GrandStay
+            </Text>
+
+            {/* Heading */}
+            <Text
+              style={[
+                styles.title,
+                {
+                  color: textColor,
+                },
+              ]}
+            >
+              Create Account
+            </Text>
+
+            {/* Subtitle */}
+            <Text
+              style={[
+                styles.subtitle,
+                {
+                  color: textSecondaryColor,
+                },
+              ]}
+            >
+              Create an account to get started
+            </Text>
+
+            {/* Appearance */}
+            <View style={styles.themeSelector}>
+              <ThemeModeSelector />
+            </View>
+
+            {/* Full Name */}
+            <TextInput
+              mode="flat"
+              label="Full Name"
+              value={fullName}
+              onChangeText={setFullName}
+              autoCapitalize="words"
+              autoCorrect={false}
+              left={
+                <TextInput.Icon
+                  icon="account-outline"
+                  color={textFieldPlaceholder}
+                />
+              }
+              error={
+                submitted && !fullName.trim()
+              }
+              style={[
+                styles.input,
+                inputStyle,
+              ]}
+              outlineColor={textFieldOutline}
+              activeOutlineColor={
+                textFieldActiveOutline
+              }
+              textColor={textFieldText}
+              placeholderTextColor={
+                textFieldPlaceholder
+              }
+            />
+
+            {submitted && !fullName.trim() && (
+              <HelperText type="error">
+                Please enter your full name.
+              </HelperText>
+            )}
+
+            {/* Email */}
+            <TextInput
+              mode="flat"
+              label="Email Address"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              left={
+                <TextInput.Icon
+                  icon="email-outline"
+                  color={textFieldPlaceholder}
+                />
+              }
+              error={
+                submitted &&
+                (!email.trim() || !isEmailValid)
+              }
+              style={[
+                styles.input,
+                inputStyle,
+              ]}
+              outlineColor={textFieldOutline}
+              activeOutlineColor={
+                textFieldActiveOutline
+              }
+              textColor={textFieldText}
+              placeholderTextColor={
+                textFieldPlaceholder
+              }
+            />
+
+            {submitted && !email.trim() && (
+              <HelperText type="error">
+                Please enter your email address.
+              </HelperText>
+            )}
+
+            {submitted &&
+              email.trim() &&
+              !isEmailValid && (
+                <HelperText type="error">
+                  Please enter a valid email address.
+                </HelperText>
+              )}
+
+            {/* Phone */}
+            <TextInput
+              mode="flat"
+              label="Phone Number (Optional)"
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+              autoCorrect={false}
+              left={
+                <TextInput.Icon
+                  icon="phone-outline"
+                  color={textFieldPlaceholder}
+                />
+              }
+              style={[
+                styles.input,
+                inputStyle,
+              ]}
+              outlineColor={textFieldOutline}
+              activeOutlineColor={
+                textFieldActiveOutline
+              }
+              textColor={textFieldText}
+              placeholderTextColor={
+                textFieldPlaceholder
+              }
+            />
+
+            {/* Password */}
+            <TextInput
+              mode="flat"
+              label="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+              left={
+                <TextInput.Icon
+                  icon="lock-outline"
+                  color={textFieldPlaceholder}
+                />
+              }
+              right={
+                <TextInput.Icon
+                  icon={
+                    showPassword
+                      ? 'eye-off-outline'
+                      : 'eye-outline'
+                  }
+                  color={textFieldPlaceholder}
+                  onPress={() =>
+                    setShowPassword(!showPassword)
+                  }
+                />
+              }
+              error={
+                submitted && !isPasswordValid
+              }
+              style={[
+                styles.input,
+                inputStyle,
+              ]}
+              outlineColor={textFieldOutline}
+              activeOutlineColor={
+                textFieldActiveOutline
+              }
+              textColor={textFieldText}
+              placeholderTextColor={
+                textFieldPlaceholder
+              }
+            />
+
+            {submitted && !isPasswordValid && (
+              <HelperText type="error">
+                Password must be at least 8 characters.
+              </HelperText>
+            )}
+
+            {/* Confirm Password */}
+            <TextInput
+              mode="flat"
+              label="Confirm Password"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry={!showConfirmPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+              left={
+                <TextInput.Icon
+                  icon="lock-check-outline"
+                  color={textFieldPlaceholder}
+                />
+              }
+              right={
+                <TextInput.Icon
+                  icon={
+                    showConfirmPassword
+                      ? 'eye-off-outline'
+                      : 'eye-outline'
+                  }
+                  color={textFieldPlaceholder}
+                  onPress={() =>
+                    setShowConfirmPassword(
+                      !showConfirmPassword,
+                    )
+                  }
+                />
+              }
+              error={
+                submitted && !passwordsMatch
+              }
+              style={[
+                styles.input,
+                inputStyle,
+              ]}
+              outlineColor={textFieldOutline}
+              activeOutlineColor={
+                textFieldActiveOutline
+              }
+              textColor={textFieldText}
+              placeholderTextColor={
+                textFieldPlaceholder
+              }
+            />
+
+            {submitted && !passwordsMatch && (
+              <HelperText type="error">
+                Passwords do not match.
+              </HelperText>
+            )}
+
+            {/* Create Account Button */}
+            <Button
+              mode="contained"
+              onPress={handleRegister}
+              style={[
+                styles.registerButton,
+                {
+                  backgroundColor: secondaryColor,
+                },
+              ]}
+              contentStyle={
+                styles.registerButtonContent
+              }
+              labelStyle={[
+                styles.registerButtonLabel,
+                {
+                  color: textPrimaryColor,
+                },
+              ]}
+            >
+              Create Account
+            </Button>
+
+            {/* Login Link */}
+            <View style={styles.loginRow}>
+              <Text
+                variant="bodyMedium"
+                style={{
+                  color: textSecondaryColor,
+                }}
+              >
+                Already have an account?
               </Text>
 
-              <View
-                style={[
-                  styles.image,
-                  { backgroundColor: colors.imagePlaceholder },
-                ]}
-              />
+              <Button
+                mode="text"
+                compact
+                onPress={() =>
+                  router.replace('/login')
+                }
+                textColor={secondaryColor}
+              >
+                Sign In
+              </Button>
             </View>
-          </View>
-        ))}
+          </Surface>
+
+          {/* Privacy Notice */}
+          <Text
+            variant="bodySmall"
+            style={[
+              styles.footerText,
+              {
+                color: textSecondaryColor,
+              },
+            ]}
+          >
+            Your information is securely protected and
+            will only be used to provide our services.
+          </Text>
+        </View>
       </ScrollView>
-
-      <View style={styles.content}>
-        <Text style={styles.type}>{room.type}</Text>
-
-        <Text style={styles.roomNumber}>
-          Room {room.roomNumber}
-        </Text>
-
-        <View style={styles.priceRow}>
-          <Text style={styles.price}>
-            ${room.price}
-          </Text>
-
-          <Text style={styles.perNight}>
-            / night
-          </Text>
-        </View>
-
-        <View style={styles.capacity}>
-          <Text style={styles.capacityText}>
-            Suitable for {room.capacity} guests
-          </Text>
-        </View>
-
-        <Divider style={styles.divider} />
-
-        <Text style={styles.heading}>
-          About this room
-        </Text>
-
-        <Text style={styles.description}>
-          {room.description}
-        </Text>
-
-        <Text style={styles.heading}>
-          Amenities
-        </Text>
-
-        <View style={styles.amenities}>
-          {room.amenities.map((amenity) => (
-            <Chip
-              key={amenity}
-              style={styles.chip}
-              textStyle={styles.chipText}
-            >
-              {amenity}
-            </Chip>
-          ))}
-        </View>
-
-        <Button
-          mode="contained"
-          style={styles.bookButton}
-          contentStyle={styles.bookButtonContent}
-          onPress={() =>
-            router.push('/bookings/create')
-          }
-        >
-          Book This Room
-        </Button>
-      </View>
-    </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
-const createStyles = (colors: ReturnType<typeof useAppThemeColors>) => StyleSheet.create({
+const styles = StyleSheet.create({
+  keyboardContainer: {
+    flex: 1,
+  },
+
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
+
   container: {
-    flex: 1,
-    backgroundColor: colors.surface,
+    width: '100%',
+    maxWidth: 500,
+    alignSelf: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 24,
   },
 
-  imageContainer: {
-    width: 390,
-    height: 280,
-    position: 'relative',
+  card: {
+    borderRadius: 20,
+    paddingHorizontal: 22,
+    paddingVertical: 28,
   },
 
-  image: {
-    flex: 1,
-  },
-
-  imageNumber: {
-    position: 'absolute',
-    zIndex: 2,
-    right: 15,
-    top: 50,
-    backgroundColor: colors.primary,
-    color: colors.headerText,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 15,
-  },
-
-  content: {
-    padding: 20,
-  },
-
-  type: {
-    fontSize: 27,
+  /* Brand */
+  brand: {
+    fontSize: 34,
     fontWeight: '800',
-    color: colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: 18,
   },
 
-  roomNumber: {
-    color: colors.textSecondary,
-    marginTop: 4,
-    fontSize: 15,
-  },
-
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginTop: 18,
-  },
-
-  price: {
-    fontSize: 27,
-    fontWeight: '800',
-    color: colors.textPrimary,
-  },
-
-  perNight: {
-    marginLeft: 5,
-    color: colors.textSecondary,
-  },
-
-  capacity: {
-    marginTop: 12,
-    padding: 12,
-    backgroundColor: colors.background,
-    borderRadius: 10,
-  },
-
-  divider: {
-    marginVertical: 22,
-  },
-
-  heading: {
-    fontSize: 19,
+  /* Heading */
+  title: {
+    fontSize: 30,
     fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: 10,
+    textAlign: 'center',
+    marginBottom: 8,
   },
 
-  description: {
-    color: colors.textSecondary,
-    lineHeight: 22,
+  /* Subtitle */
+  subtitle: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+
+  /* Appearance */
+  themeSelector: {
     marginBottom: 22,
   },
 
-  amenities: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+  /* Inputs */
+  input: {
+    marginBottom: 4,
   },
 
-  chip: {
-    backgroundColor: colors.surfaceVariant,
-  },
-
-  chipText: {
-    color: colors.textPrimary,
-  },
-
-  capacityText: {
-    color: colors.textPrimary,
-  },
-
-  bookButton: {
-    marginTop: 30,
+  /* Button */
+  registerButton: {
+    marginTop: 18,
     borderRadius: 10,
   },
 
-  bookButtonContent: {
-    height: 52,
+  registerButtonContent: {
+    height: 50,
+  },
+
+  registerButtonLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
+  /* Login */
+  loginRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 18,
+  },
+
+  /* Privacy */
+  footerText: {
+    textAlign: 'center',
+    marginTop: 20,
+    lineHeight: 18,
   },
 });
