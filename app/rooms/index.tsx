@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   FlatList,
+  Image,
   StyleSheet,
   View,
 } from 'react-native';
@@ -11,6 +12,7 @@ import {
   Searchbar,
 } from 'react-native-paper';
 import { router } from 'expo-router';
+
 import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
 
 const rooms = [
@@ -57,20 +59,41 @@ export default function RoomsScreen() {
 
   return (
     <View style={styles.container}>
+
+      {/* Hotel Branding */}
+      <View style={styles.branding}>
+        <Image
+          source={require('../../assets/images/royal-crest-logo.jpg')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+
+        <Text style={styles.hotelName}>
+          Royal Crest Hotel
+        </Text>
+      </View>
+
+      {/* Page Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Rooms</Text>
+        <Text style={styles.title}>
+          Rooms
+        </Text>
+
         <Text style={styles.subtitle}>
           Find your perfect room
         </Text>
       </View>
 
+      {/* Search */}
       <Searchbar
         placeholder="Search rooms"
         value={search}
         onChangeText={setSearch}
         style={styles.search}
+        inputStyle={styles.searchInput}
       />
 
+      {/* Room List */}
       <FlatList
         data={filteredRooms}
         keyExtractor={(item) => item.id}
@@ -78,6 +101,7 @@ export default function RoomsScreen() {
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
           <Card style={styles.card}>
+
             <Card.Cover
               source={{ uri: item.image }}
               style={styles.image}
@@ -97,7 +121,9 @@ export default function RoomsScreen() {
               </Text>
 
               <View style={styles.details}>
-                <Text>{item.capacity} Guests</Text>
+                <Text style={styles.capacity}>
+                  {item.capacity} Guests
+                </Text>
 
                 <Text style={styles.price}>
                   ${item.price} / night
@@ -114,6 +140,7 @@ export default function RoomsScreen() {
               >
                 View Room
               </Button>
+
               <Button
                 mode="text"
                 icon="arrow-left"
@@ -122,6 +149,7 @@ export default function RoomsScreen() {
                 Back
               </Button>
             </Card.Actions>
+
           </Card>
         )}
       />
@@ -129,88 +157,124 @@ export default function RoomsScreen() {
   );
 }
 
-const createStyles = (colors: ReturnType<typeof useAppThemeColors>) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
+const createStyles = (
+  colors: ReturnType<typeof useAppThemeColors>,
+) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
 
-  header: {
-    backgroundColor: colors.primary,
-    paddingTop: 55,
-    paddingHorizontal: 20,
-    paddingBottom: 22,
-  },
+    /* Hotel Branding */
+    branding: {
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      paddingTop: 30,
+      paddingBottom: 18,
+    },
 
-  title: {
-    color: colors.headerText,
-    fontSize: 27,
-    fontWeight: '800',
-  },
+    logo: {
+      width: 65,
+      height: 65,
+      borderRadius: 10,
+      marginBottom: 8,
+    },
 
-  subtitle: {
-    color: colors.headerSubtle,
-    marginTop: 4,
-  },
+    hotelName: {
+      color: colors.textPrimary,
+      fontSize: 21,
+      fontWeight: '800',
+      textAlign: 'center',
+    },
 
-  search: {
-    margin: 16,
-    borderRadius: 12,
-    backgroundColor: colors.surface,
-  },
+    /* Page Header */
+    header: {
+      backgroundColor: colors.primary,
+      paddingTop: 25,
+      paddingHorizontal: 20,
+      paddingBottom: 22,
+    },
 
-  list: {
-    paddingHorizontal: 16,
-    paddingBottom: 30,
-  },
+    title: {
+      color: colors.headerText,
+      fontSize: 27,
+      fontWeight: '800',
+    },
 
-  card: {
-    marginBottom: 18,
-    borderRadius: 15,
-    overflow: 'hidden',
-    backgroundColor: colors.surface,
-  },
+    subtitle: {
+      color: colors.headerSubtle,
+      marginTop: 4,
+    },
 
-  image: {
-    height: 210,
-  },
+    /* Search */
+    search: {
+      margin: 16,
+      borderRadius: 12,
+      backgroundColor: colors.surface,
+    },
 
-  cardContent: {
-    paddingTop: 14,
-  },
+    searchInput: {
+      color: colors.textPrimary,
+    },
 
-  roomType: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
+    /* Room List */
+    list: {
+      paddingHorizontal: 16,
+      paddingBottom: 30,
+    },
 
-  roomNumber: {
-    marginTop: 3,
-    color: colors.textSecondary,
-  },
+    card: {
+      marginBottom: 18,
+      borderRadius: 15,
+      overflow: 'hidden',
+      backgroundColor: colors.surface,
+    },
 
-  description: {
-    marginTop: 10,
-    color: colors.textSecondary,
-    lineHeight: 20,
-  },
+    image: {
+      height: 210,
+    },
 
-  details: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 14,
-    alignItems: 'center',
-  },
+    cardContent: {
+      paddingTop: 14,
+    },
 
-  price: {
-    fontWeight: '700',
-    color: colors.textPrimary,
-    fontSize: 17,
-  },
+    roomType: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
 
-  actions: {
-    paddingHorizontal: 12,
-    paddingBottom: 12,
-  },
-});
+    roomNumber: {
+      marginTop: 3,
+      color: colors.textSecondary,
+    },
+
+    description: {
+      marginTop: 10,
+      color: colors.textSecondary,
+      lineHeight: 20,
+    },
+
+    details: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginTop: 14,
+      alignItems: 'center',
+    },
+
+    capacity: {
+      color: colors.textSecondary,
+    },
+
+    price: {
+      fontWeight: '700',
+      color: colors.textPrimary,
+      fontSize: 17,
+    },
+
+    actions: {
+      paddingHorizontal: 12,
+      paddingBottom: 12,
+    },
+  });

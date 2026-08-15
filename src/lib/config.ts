@@ -9,6 +9,6 @@ export const config = {
   apiBaseUrl: process.env.EXPO_PUBLIC_API_URL ?? '',
   currency: 'GBP',
   locale: 'en-GB',
-  hotelName: 'Aurora Grand Hotel',
+  hotelName: 'Royal Crest Hotel',
   taxRate: 0.12,
 } as const;

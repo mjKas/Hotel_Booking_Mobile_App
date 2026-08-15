@@ -1,7 +1,12 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import {
+  Image,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { Button, Text } from 'react-native-paper';
 import { router } from 'expo-router';
+
 import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
 
 export default function BookingConfirmationScreen() {
@@ -10,10 +15,26 @@ export default function BookingConfirmationScreen() {
 
   return (
     <View style={styles.container}>
+
+      {/* Hotel Branding */}
+      <View style={styles.branding}>
+        <Image
+          source={require('../../assets/images/royal-crest-logo.jpg')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+
+        <Text style={styles.hotelName}>
+          Royal Crest Hotel
+        </Text>
+      </View>
+
+      {/* Confirmation Icon */}
       <View style={styles.icon}>
         <Text style={styles.check}>✓</Text>
       </View>
 
+      {/* Confirmation Message */}
       <Text style={styles.title}>
         Booking Confirmed!
       </Text>
@@ -22,6 +43,7 @@ export default function BookingConfirmationScreen() {
         Your reservation has been successfully confirmed.
       </Text>
 
+      {/* Booking Summary */}
       <View style={styles.bookingCard}>
         <Text style={styles.bookingId}>
           BOOKING NUMBER
@@ -56,6 +78,7 @@ export default function BookingConfirmationScreen() {
         </Text>
       </View>
 
+      {/* View Booking */}
       <Button
         mode="contained"
         onPress={() =>
@@ -67,6 +90,7 @@ export default function BookingConfirmationScreen() {
         View Booking
       </Button>
 
+      {/* Back Home */}
       <Button
         mode="text"
         textColor={colors.primary}
@@ -80,100 +104,128 @@ export default function BookingConfirmationScreen() {
   );
 }
 
-const createStyles = (colors: ReturnType<typeof useAppThemeColors>) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
+const createStyles = (
+  colors: ReturnType<typeof useAppThemeColors>,
+) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      alignItems: 'center',
+      paddingHorizontal: 24,
+      paddingTop: 35,
+    },
 
-  icon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.successSurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+    /* Hotel Branding */
+    branding: {
+      alignItems: 'center',
+      marginBottom: 25,
+    },
 
-  check: {
-    color: colors.success,
-    fontSize: 42,
-    fontWeight: '700',
-  },
+    logo: {
+      width: 65,
+      height: 65,
+      borderRadius: 10,
+      marginBottom: 8,
+    },
 
-  title: {
-    fontSize: 27,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    marginTop: 20,
-  },
+    hotelName: {
+      color: colors.textPrimary,
+      fontSize: 21,
+      fontWeight: '800',
+      textAlign: 'center',
+    },
 
-  subtitle: {
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: 8,
-    lineHeight: 21,
-  },
+    /* Confirmation Icon */
+    icon: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: colors.successSurface,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
 
-  bookingCard: {
-    width: '100%',
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 20,
-    marginTop: 28,
-  },
+    check: {
+      color: colors.success,
+      fontSize: 42,
+      fontWeight: '700',
+    },
 
-  bookingId: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.textSecondary,
-  },
+    /* Confirmation Message */
+    title: {
+      fontSize: 27,
+      fontWeight: '800',
+      color: colors.textPrimary,
+      marginTop: 20,
+      textAlign: 'center',
+    },
 
-  bookingNumber: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    marginTop: 4,
-  },
+    subtitle: {
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: 8,
+      lineHeight: 21,
+    },
 
-  divider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: 16,
-  },
+    /* Booking Card */
+    bookingCard: {
+      width: '100%',
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 20,
+      marginTop: 28,
+    },
 
-  room: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
+    bookingId: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: colors.textSecondary,
+    },
 
-  details: {
-    color: colors.textSecondary,
-    marginTop: 5,
-  },
+    bookingNumber: {
+      fontSize: 20,
+      fontWeight: '800',
+      color: colors.textPrimary,
+      marginTop: 4,
+    },
 
-  totalLabel: {
-    color: colors.textSecondary,
-  },
+    divider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginVertical: 16,
+    },
 
-  total: {
-    color: colors.textPrimary,
-    fontSize: 24,
-    fontWeight: '800',
-    marginTop: 3,
-  },
+    room: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
 
-  button: {
-    width: '100%',
-    marginTop: 25,
-    borderRadius: 10,
-  },
+    details: {
+      color: colors.textSecondary,
+      marginTop: 5,
+    },
 
-  buttonContent: {
-    height: 50,
-  },
-});
+    totalLabel: {
+      color: colors.textSecondary,
+    },
+
+    total: {
+      color: colors.textPrimary,
+      fontSize: 24,
+      fontWeight: '800',
+      marginTop: 3,
+    },
+
+    /* Buttons */
+    button: {
+      width: '100%',
+      marginTop: 25,
+      borderRadius: 10,
+    },
+
+    buttonContent: {
+      height: 50,
+    },
+  });

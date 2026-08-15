@@ -1,7 +1,13 @@
 import React from 'react';
-import { ScrollView, StyleSheet, View, Image } from 'react-native';
+import {
+  ScrollView,
+  StyleSheet,
+  View,
+  Image,
+} from 'react-native';
 import { Text, Button, Surface } from 'react-native-paper';
 import { router } from 'expo-router';
+
 import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
 
 export default function CustomerHomeScreen() {
@@ -14,10 +20,24 @@ export default function CustomerHomeScreen() {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
+      {/* Hotel Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.brand}>GrandStay</Text>
-          <Text style={styles.welcome}>Welcome back!</Text>
+        <View style={styles.brandContainer}>
+          <Image
+            source={require('../../../assets/images/royal-crest-logo.jpg')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+
+          <View>
+            <Text style={styles.brand}>
+              Royal Crest Hotel
+            </Text>
+
+            <Text style={styles.welcome}>
+              Welcome back!
+            </Text>
+          </View>
         </View>
 
         <Button
@@ -29,6 +49,7 @@ export default function CustomerHomeScreen() {
         </Button>
       </View>
 
+      {/* Hero Image */}
       <Image
         source={{
           uri: 'https://images.unsplash.com/photo-1566073771259-6a8506099945',
@@ -37,30 +58,51 @@ export default function CustomerHomeScreen() {
       />
 
       <View style={styles.heroOverlay}>
-        <Text style={styles.heroTitle}>Your perfect stay awaits</Text>
+        <Text style={styles.heroTitle}>
+          Your perfect stay awaits
+        </Text>
+
         <Text style={styles.heroSubtitle}>
           Comfortable rooms and exceptional hospitality.
         </Text>
       </View>
 
+      {/* Room Search */}
       <Surface style={styles.searchCard} elevation={3}>
-        <Text style={styles.sectionTitle}>Find your room</Text>
+        <Text style={styles.sectionTitle}>
+          Find your room
+        </Text>
 
         <View style={styles.dateRow}>
           <View style={styles.dateBox}>
-            <Text style={styles.label}>CHECK-IN</Text>
-            <Text style={styles.value}>08 Aug 2026</Text>
+            <Text style={styles.label}>
+              CHECK-IN
+            </Text>
+
+            <Text style={styles.value}>
+              08 Aug 2026
+            </Text>
           </View>
 
           <View style={styles.dateBox}>
-            <Text style={styles.label}>CHECK-OUT</Text>
-            <Text style={styles.value}>10 Aug 2026</Text>
+            <Text style={styles.label}>
+              CHECK-OUT
+            </Text>
+
+            <Text style={styles.value}>
+              10 Aug 2026
+            </Text>
           </View>
         </View>
 
         <View style={styles.guestBox}>
-          <Text style={styles.label}>GUESTS</Text>
-          <Text style={styles.value}>2 Guests</Text>
+          <Text style={styles.label}>
+            GUESTS
+          </Text>
+
+          <Text style={styles.value}>
+            2 Guests
+          </Text>
         </View>
 
         <Button
@@ -73,8 +115,11 @@ export default function CustomerHomeScreen() {
         </Button>
       </Surface>
 
+      {/* Featured Rooms */}
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Featured Rooms</Text>
+        <Text style={styles.sectionTitle}>
+          Featured Rooms
+        </Text>
 
         <Button
           mode="text"
@@ -94,13 +139,19 @@ export default function CustomerHomeScreen() {
         />
 
         <View style={styles.featuredContent}>
-          <Text style={styles.roomTitle}>Deluxe Room</Text>
+          <Text style={styles.roomTitle}>
+            Deluxe Room
+          </Text>
+
           <Text style={styles.roomDescription}>
-            Spacious room with modern facilities and a comfortable atmosphere.
+            Spacious room with modern facilities and a comfortable
+            atmosphere.
           </Text>
 
           <View style={styles.roomBottom}>
-            <Text style={styles.price}>$120 / night</Text>
+            <Text style={styles.price}>
+              $120 / night
+            </Text>
 
             <Button
               mode="contained"
@@ -116,163 +167,180 @@ export default function CustomerHomeScreen() {
   );
 }
 
-const createStyles = (colors: ReturnType<typeof useAppThemeColors>) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
+const createStyles = (
+  colors: ReturnType<typeof useAppThemeColors>,
+) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
 
-  content: {
-    paddingBottom: 30,
-  },
+    content: {
+      paddingBottom: 30,
+    },
 
-  header: {
-    backgroundColor: colors.surface,
-    paddingHorizontal: 20,
-    paddingTop: 55,
-    paddingBottom: 15,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
+    header: {
+      backgroundColor: colors.surface,
+      paddingHorizontal: 20,
+      paddingTop: 55,
+      paddingBottom: 15,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
 
-  brand: {
-    fontSize: 25,
-    fontWeight: '800',
-    color: colors.textPrimary,
-  },
+    brandContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+    },
 
-  welcome: {
-    marginTop: 3,
-    color: colors.textSecondary,
-  },
+    logo: {
+      width: 55,
+      height: 55,
+      borderRadius: 8,
+      marginRight: 10,
+    },
 
-  heroImage: {
-    width: '100%',
-    height: 230,
-  },
+    brand: {
+      fontSize: 21,
+      fontWeight: '800',
+      color: colors.textPrimary,
+    },
 
-  heroOverlay: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 18,
-  },
+    welcome: {
+      marginTop: 3,
+      color: colors.textSecondary,
+      fontSize: 13,
+    },
 
-  heroTitle: {
-    color: colors.headerText,
-    fontSize: 23,
-    fontWeight: '700',
-  },
+    heroImage: {
+      width: '100%',
+      height: 230,
+    },
 
-  heroSubtitle: {
-    color: colors.headerSubtle,
-    marginTop: 5,
-    fontSize: 14,
-  },
+    heroOverlay: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: 20,
+      paddingVertical: 18,
+    },
 
-  searchCard: {
-    margin: 16,
-    padding: 18,
-    borderRadius: 16,
-    backgroundColor: colors.surface,
-  },
+    heroTitle: {
+      color: colors.headerText,
+      fontSize: 23,
+      fontWeight: '700',
+    },
 
-  sectionTitle: {
-    fontSize: 19,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
+    heroSubtitle: {
+      color: colors.headerSubtle,
+      marginTop: 5,
+      fontSize: 14,
+    },
 
-  dateRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 16,
-  },
+    searchCard: {
+      margin: 16,
+      padding: 18,
+      borderRadius: 16,
+      backgroundColor: colors.surface,
+    },
 
-  dateBox: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    padding: 12,
-  },
+    sectionTitle: {
+      fontSize: 19,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
 
-  guestBox: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    padding: 12,
-    marginTop: 10,
-  },
+    dateRow: {
+      flexDirection: 'row',
+      gap: 10,
+      marginTop: 16,
+    },
 
-  label: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    fontWeight: '700',
-  },
+    dateBox: {
+      flex: 1,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      padding: 12,
+    },
 
-  value: {
-    fontSize: 15,
-    color: colors.textPrimary,
-    fontWeight: '600',
-    marginTop: 4,
-  },
+    guestBox: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      padding: 12,
+      marginTop: 10,
+    },
 
-  searchButton: {
-    marginTop: 16,
-    borderRadius: 10,
-  },
+    label: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      fontWeight: '700',
+    },
 
-  buttonContent: {
-    height: 48,
-  },
+    value: {
+      fontSize: 15,
+      color: colors.textPrimary,
+      fontWeight: '600',
+      marginTop: 4,
+    },
 
-  sectionHeader: {
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
+    searchButton: {
+      marginTop: 16,
+      borderRadius: 10,
+    },
 
-  featuredCard: {
-    marginHorizontal: 16,
-    marginTop: 4,
-    borderRadius: 15,
-    overflow: 'hidden',
-    backgroundColor: colors.surface,
-  },
+    buttonContent: {
+      height: 48,
+    },
 
-  featuredImage: {
-    width: '100%',
-    height: 180,
-  },
+    sectionHeader: {
+      paddingHorizontal: 16,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
 
-  featuredContent: {
-    padding: 15,
-  },
+    featuredCard: {
+      marginHorizontal: 16,
+      marginTop: 4,
+      borderRadius: 15,
+      overflow: 'hidden',
+      backgroundColor: colors.surface,
+    },
 
-  roomTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
+    featuredImage: {
+      width: '100%',
+      height: 180,
+    },
 
-  roomDescription: {
-    color: colors.textSecondary,
-    marginTop: 5,
-    lineHeight: 20,
-  },
+    featuredContent: {
+      padding: 15,
+    },
 
-  roomBottom: {
-    marginTop: 15,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
+    roomTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
 
-  price: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-});
+    roomDescription: {
+      color: colors.textSecondary,
+      marginTop: 5,
+      lineHeight: 20,
+    },
+
+    roomBottom: {
+      marginTop: 15,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+
+    price: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
+  });

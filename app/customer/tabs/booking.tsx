@@ -1,5 +1,10 @@
 import React from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import {
+  Image,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { Button, Card, Chip, Text } from 'react-native-paper';
 import { router } from 'expo-router';
 
@@ -34,6 +39,20 @@ export default function CustomerBookingsScreen() {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
+      {/* Hotel Branding */}
+      <View style={styles.branding}>
+        <Image
+          source={require('../../../assets/images/royal-crest-logo.jpg')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+
+        <Text style={styles.hotelName}>
+          Royal Crest Hotel
+        </Text>
+      </View>
+
+      {/* Page Title */}
       <Text style={styles.title}>My Bookings</Text>
 
       {bookings.map((booking) => (
@@ -59,39 +78,54 @@ export default function CustomerBookingsScreen() {
               </Chip>
             </View>
 
-            <Text style={styles.details}>{booking.dates}</Text>
+            <Text style={styles.details}>
+              {booking.dates}
+            </Text>
+
             <Text style={styles.details}>
               {booking.guests} Guests
             </Text>
 
             <View style={styles.bottomRow}>
-              <Text style={styles.total}>${booking.total}</Text>
+              <Text style={styles.total}>
+                ${booking.total}
+              </Text>
 
               <Button
                 mode="contained"
                 compact
                 buttonColor={colors.secondary}
                 textColor="#000000"
-                onPress={() => router.push('/bookings/1024')}
+                onPress={() =>
+                  router.push(
+                    `/bookings/${booking.id.replace('BK-', '')}`,
+                  )
+                }
               >
                 View
               </Button>
-            <Button
-              mode="text"
-              icon="arrow-left"
-              onPress={() => router.back()}
-            >
-              Back
-            </Button>
             </View>
           </Card.Content>
         </Card>
       ))}
+
+      {/* Back Button */}
+      <Button
+        mode="text"
+        icon="arrow-left"
+        textColor={colors.textPrimary}
+        onPress={() => router.back()}
+        style={styles.backButton}
+      >
+        Back
+      </Button>
     </ScrollView>
   );
 }
 
-const createStyles = (colors: ReturnType<typeof useAppThemeColors>) =>
+const createStyles = (
+  colors: ReturnType<typeof useAppThemeColors>,
+) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -101,6 +135,24 @@ const createStyles = (colors: ReturnType<typeof useAppThemeColors>) =>
     content: {
       padding: 20,
       paddingBottom: 40,
+    },
+
+    branding: {
+      alignItems: 'center',
+      marginBottom: 24,
+    },
+
+    logo: {
+      width: 100,
+      height: 70,
+      marginBottom: 8,
+    },
+
+    hotelName: {
+      color: colors.textPrimary,
+      fontSize: 18,
+      fontWeight: '800',
+      textAlign: 'center',
     },
 
     title: {
@@ -162,5 +214,10 @@ const createStyles = (colors: ReturnType<typeof useAppThemeColors>) =>
       color: colors.textPrimary,
       fontSize: 20,
       fontWeight: '800',
+    },
+
+    backButton: {
+      alignSelf: 'flex-start',
+      marginTop: 4,
     },
   });

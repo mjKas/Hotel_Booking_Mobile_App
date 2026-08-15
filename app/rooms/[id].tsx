@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Image,
   ScrollView,
   StyleSheet,
   View,
@@ -11,6 +12,7 @@ import {
   Divider,
 } from 'react-native-paper';
 import { router, useLocalSearchParams } from 'expo-router';
+
 import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
 
 const room = {
@@ -46,6 +48,20 @@ export default function RoomDetailsScreen() {
       style={styles.container}
       showsVerticalScrollIndicator={false}
     >
+      {/* Hotel Branding */}
+      <View style={styles.branding}>
+        <Image
+          source={require('../../assets/images/royal-crest-logo.jpg')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+
+        <Text style={styles.hotelName}>
+          Royal Crest Hotel
+        </Text>
+      </View>
+
+      {/* Room Images */}
       <ScrollView
         horizontal
         pagingEnabled
@@ -61,7 +77,10 @@ export default function RoomDetailsScreen() {
               <View
                 style={[
                   styles.image,
-                  { backgroundColor: colors.imagePlaceholder },
+                  {
+                    backgroundColor:
+                      colors.imagePlaceholder,
+                  },
                 ]}
               />
             </View>
@@ -69,8 +88,11 @@ export default function RoomDetailsScreen() {
         ))}
       </ScrollView>
 
+      {/* Room Information */}
       <View style={styles.content}>
-        <Text style={styles.type}>{room.type}</Text>
+        <Text style={styles.type}>
+          {room.type}
+        </Text>
 
         <Text style={styles.roomNumber}>
           Room {room.roomNumber}
@@ -128,127 +150,155 @@ export default function RoomDetailsScreen() {
         >
           Book This Room
         </Button>
+
         <Button
-         mode="text"
-        icon="arrow-left"
-        onPress={() => router.back()}
+          mode="text"
+          icon="arrow-left"
+          onPress={() => router.back()}
         >
-        Back
+          Back
         </Button>
       </View>
     </ScrollView>
   );
 }
 
-const createStyles = (colors: ReturnType<typeof useAppThemeColors>) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.surface,
-  },
+const createStyles = (
+  colors: ReturnType<typeof useAppThemeColors>,
+) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.surface,
+    },
 
-  imageContainer: {
-    width: 390,
-    height: 280,
-    position: 'relative',
-  },
+    /* Hotel Branding */
+    branding: {
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      paddingTop: 30,
+      paddingBottom: 18,
+    },
 
-  image: {
-    flex: 1,
-  },
+    logo: {
+      width: 65,
+      height: 65,
+      borderRadius: 10,
+      marginBottom: 8,
+    },
 
-  imageNumber: {
-    position: 'absolute',
-    zIndex: 2,
-    right: 15,
-    top: 50,
-    backgroundColor: colors.primary,
-    color: colors.headerText,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 15,
-  },
+    hotelName: {
+      color: colors.textPrimary,
+      fontSize: 21,
+      fontWeight: '800',
+      textAlign: 'center',
+    },
 
-  content: {
-    padding: 20,
-  },
+    /* Room Images */
+    imageContainer: {
+      width: 390,
+      height: 280,
+      position: 'relative',
+    },
 
-  type: {
-    fontSize: 27,
-    fontWeight: '800',
-    color: colors.textPrimary,
-  },
+    image: {
+      flex: 1,
+    },
 
-  roomNumber: {
-    color: colors.textSecondary,
-    marginTop: 4,
-    fontSize: 15,
-  },
+    imageNumber: {
+      position: 'absolute',
+      zIndex: 2,
+      right: 15,
+      top: 20,
+      backgroundColor: colors.primary,
+      color: colors.headerText,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 15,
+    },
 
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginTop: 18,
-  },
+    /* Room Content */
+    content: {
+      padding: 20,
+    },
 
-  price: {
-    fontSize: 27,
-    fontWeight: '800',
-    color: colors.textPrimary,
-  },
+    type: {
+      fontSize: 27,
+      fontWeight: '800',
+      color: colors.textPrimary,
+    },
 
-  perNight: {
-    marginLeft: 5,
-    color: colors.textSecondary,
-  },
+    roomNumber: {
+      color: colors.textSecondary,
+      marginTop: 4,
+      fontSize: 15,
+    },
 
-  capacity: {
-    marginTop: 12,
-    padding: 12,
-    backgroundColor: colors.background,
-    borderRadius: 10,
-  },
+    priceRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      marginTop: 18,
+    },
 
-  divider: {
-    marginVertical: 22,
-  },
+    price: {
+      fontSize: 27,
+      fontWeight: '800',
+      color: colors.textPrimary,
+    },
 
-  heading: {
-    fontSize: 19,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: 10,
-  },
+    perNight: {
+      marginLeft: 5,
+      color: colors.textSecondary,
+    },
 
-  description: {
-    color: colors.textSecondary,
-    lineHeight: 22,
-    marginBottom: 22,
-  },
+    capacity: {
+      marginTop: 12,
+      padding: 12,
+      backgroundColor: colors.background,
+      borderRadius: 10,
+    },
 
-  amenities: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
+    capacityText: {
+      color: colors.textPrimary,
+    },
 
-  chip: {
-    backgroundColor: colors.surfaceVariant,
-  },
+    divider: {
+      marginVertical: 22,
+    },
 
-  chipText: {
-    color: colors.textPrimary,
-  },
+    heading: {
+      fontSize: 19,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      marginBottom: 10,
+    },
 
-  capacityText: {
-    color: colors.textPrimary,
-  },
+    description: {
+      color: colors.textSecondary,
+      lineHeight: 22,
+      marginBottom: 22,
+    },
 
-  bookButton: {
-    marginTop: 30,
-    borderRadius: 10,
-  },
+    amenities: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
 
-  bookButtonContent: {
-    height: 52,
-  },
-});
+    chip: {
+      backgroundColor: colors.surfaceVariant,
+    },
+
+    chipText: {
+      color: colors.textPrimary,
+    },
+
+    bookButton: {
+      marginTop: 30,
+      borderRadius: 10,
+    },
+
+    bookButtonContent: {
+      height: 52,
+    },
+  });
