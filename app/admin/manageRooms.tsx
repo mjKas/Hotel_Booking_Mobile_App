@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   FlatList,
+  Image,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -88,10 +89,6 @@ export default function ManageRoomsScreen() {
   const [price, setPrice] = useState('');
   const [capacity, setCapacity] = useState('');
 
-  // ----------------------------------------
-  // KEYBOARD STATE
-  // ----------------------------------------
-
   useEffect(() => {
     const showListener = Keyboard.addListener(
       Platform.OS === 'ios'
@@ -117,10 +114,6 @@ export default function ManageRoomsScreen() {
     };
   }, []);
 
-  // ----------------------------------------
-  // OPEN ADD
-  // ----------------------------------------
-
   const openAddRoom = () => {
     Keyboard.dismiss();
 
@@ -132,10 +125,6 @@ export default function ManageRoomsScreen() {
 
     setDialogVisible(true);
   };
-
-  // ----------------------------------------
-  // OPEN EDIT
-  // ----------------------------------------
 
   const openEditRoom = (room: Room) => {
     Keyboard.dismiss();
@@ -149,18 +138,10 @@ export default function ManageRoomsScreen() {
     setDialogVisible(true);
   };
 
-  // ----------------------------------------
-  // CLOSE
-  // ----------------------------------------
-
   const closeDialog = () => {
     Keyboard.dismiss();
     setDialogVisible(false);
   };
-
-  // ----------------------------------------
-  // SAVE
-  // ----------------------------------------
 
   const saveRoom = () => {
     Keyboard.dismiss();
@@ -196,28 +177,12 @@ export default function ManageRoomsScreen() {
     setDialogVisible(false);
   };
 
-  // ----------------------------------------
-  // DELETE
-  // ----------------------------------------
-
   const deleteRoom = (id: string) => {
     setRooms((current) =>
       current.filter((room) => room.id !== id),
     );
   };
 
-  // ----------------------------------------
-  // DIALOG HEIGHT
-  // ----------------------------------------
-
-  /*
-   * Closed keyboard:
-   * Larger comfortable dialog.
-   *
-   * Keyboard open:
-   * Smaller dialog so the keyboard never covers
-   * the action buttons.
-   */
   const dialogMaxHeight = keyboardVisible
     ? screenHeight * 0.48
     : screenHeight * 0.70;
@@ -225,19 +190,32 @@ export default function ManageRoomsScreen() {
   return (
     <View style={styles.container}>
 
-      {/* =====================================
-          HEADER
-          ===================================== */}
+      {/* HEADER */}
 
       <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>
-            Manage Rooms
-          </Text>
 
-          <Text style={styles.subtitle}>
-            {rooms.length} rooms
-          </Text>
+        <View style={styles.branding}>
+
+          <Image
+            source={require('../../assets/images/royal-crest-logo.jpg')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+
+          <View>
+            <Text style={styles.brandName}>
+              Royal Crest Hotel
+            </Text>
+
+            <Text style={styles.pageTitle}>
+              Manage Rooms
+            </Text>
+
+            <Text style={styles.subtitle}>
+              {rooms.length} rooms
+            </Text>
+          </View>
+
         </View>
 
         <Button
@@ -250,11 +228,10 @@ export default function ManageRoomsScreen() {
         >
           Add
         </Button>
+
       </View>
 
-      {/* =====================================
-          ROOM LIST
-          ===================================== */}
+      {/* ROOM LIST */}
 
       <FlatList
         data={rooms}
@@ -349,9 +326,7 @@ export default function ManageRoomsScreen() {
         )}
       />
 
-      {/* =====================================
-          ADD / EDIT MODAL
-          ===================================== */}
+      {/* ADD / EDIT MODAL */}
 
       <Modal
         visible={dialogVisible}
@@ -369,16 +344,10 @@ export default function ManageRoomsScreen() {
           }
         >
 
-          {/* BACKDROP */}
-
           <Pressable
             style={styles.modalBackdrop}
             onPress={closeDialog}
           />
-
-          {/* =================================
-              ACTUAL FORM
-              ================================= */}
 
           <View
             style={[
@@ -389,8 +358,6 @@ export default function ManageRoomsScreen() {
             ]}
           >
 
-            {/* TITLE */}
-
             <View style={styles.formHeader}>
               <Text style={styles.formTitle}>
                 {editingRoomId
@@ -399,13 +366,9 @@ export default function ManageRoomsScreen() {
               </Text>
             </View>
 
-            {/* FORM */}
-
             <ScrollView
               style={styles.formScroll}
-              contentContainerStyle={
-                styles.formContent
-              }
+              contentContainerStyle={styles.formContent}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
@@ -453,10 +416,6 @@ export default function ManageRoomsScreen() {
 
             </ScrollView>
 
-            {/* =================================
-                ACTIONS
-                ================================= */}
-
             <View style={styles.formActions}>
 
               <Button
@@ -490,10 +449,6 @@ export default function ManageRoomsScreen() {
   );
 }
 
-// ==========================================
-// STATUS STYLE
-// ==========================================
-
 function getStatusStyle(
   status: Room['status'],
   styles: ReturnType<typeof createStyles>,
@@ -509,10 +464,6 @@ function getStatusStyle(
       return styles.maintenance;
   }
 }
-
-// ==========================================
-// STATUS TEXT STYLE
-// ==========================================
 
 function getStatusTextStyle(
   status: Room['status'],
@@ -530,55 +481,59 @@ function getStatusTextStyle(
   }
 }
 
-// ==========================================
-// STYLES
-// ==========================================
-
 const createStyles = (
   colors: ReturnType<typeof useAppThemeColors>,
 ) =>
   StyleSheet.create({
-
-    // ----------------------------------------
-    // MAIN
-    // ----------------------------------------
 
     container: {
       flex: 1,
       backgroundColor: colors.background,
     },
 
-    // ----------------------------------------
-    // HEADER
-    // ----------------------------------------
-
     header: {
       backgroundColor: colors.primary,
-
       paddingTop: 55,
       paddingHorizontal: 20,
       paddingBottom: 20,
-
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
     },
 
-    title: {
+    branding: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+      marginRight: 10,
+    },
+
+    logo: {
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      marginRight: 12,
+      backgroundColor: colors.surface,
+    },
+
+    brandName: {
       color: colors.headerText,
-      fontSize: 25,
+      fontSize: 19,
       fontWeight: '800',
+    },
+
+    pageTitle: {
+      color: colors.headerText,
+      fontSize: 16,
+      fontWeight: '700',
+      marginTop: 2,
     },
 
     subtitle: {
       color: colors.headerSubtle,
-      marginTop: 3,
-      fontSize: 16,
+      marginTop: 2,
+      fontSize: 13,
     },
-
-    // ----------------------------------------
-    // LIST
-    // ----------------------------------------
 
     list: {
       padding: 16,
@@ -600,14 +555,10 @@ const createStyles = (
     roomNumber: {
       width: 58,
       height: 58,
-
       alignItems: 'center',
       justifyContent: 'center',
-
       borderRadius: 12,
-
-      backgroundColor:
-        colors.surfaceVariant,
+      backgroundColor: colors.surfaceVariant,
     },
 
     number: {
@@ -660,13 +611,8 @@ const createStyles = (
       borderColor: colors.error,
     },
 
-    // ----------------------------------------
-    // STATUS
-    // ----------------------------------------
-
     available: {
-      backgroundColor:
-        colors.successSurface,
+      backgroundColor: colors.successSurface,
     },
 
     availableText: {
@@ -676,8 +622,7 @@ const createStyles = (
     },
 
     occupied: {
-      backgroundColor:
-        colors.infoSurface,
+      backgroundColor: colors.infoSurface,
     },
 
     occupiedText: {
@@ -687,8 +632,7 @@ const createStyles = (
     },
 
     maintenance: {
-      backgroundColor:
-        colors.errorSurface,
+      backgroundColor: colors.errorSurface,
     },
 
     maintenanceText: {
@@ -696,10 +640,6 @@ const createStyles = (
       fontSize: 10,
       fontWeight: '800',
     },
-
-    // ----------------------------------------
-    // MODAL
-    // ----------------------------------------
 
     modalRoot: {
       flex: 1,
@@ -712,22 +652,13 @@ const createStyles = (
       backgroundColor: 'rgba(0, 0, 0, 0.45)',
     },
 
-    // ----------------------------------------
-    // FORM CARD
-    // ----------------------------------------
-
     formCard: {
       width: '90%',
       maxWidth: 420,
-
       borderRadius: 28,
-
       overflow: 'hidden',
-
       backgroundColor: colors.surface,
-
       elevation: 8,
-
       shadowColor: '#000',
       shadowOffset: {
         width: 0,
@@ -749,10 +680,6 @@ const createStyles = (
       color: colors.textPrimary,
     },
 
-    // ----------------------------------------
-    // FORM SCROLL
-    // ----------------------------------------
-
     formScroll: {
       flexGrow: 0,
     },
@@ -768,19 +695,12 @@ const createStyles = (
       backgroundColor: colors.surface,
     },
 
-    // ----------------------------------------
-    // FORM BUTTONS
-    // ----------------------------------------
-
     formActions: {
       minHeight: 64,
-
       flexDirection: 'row',
       justifyContent: 'flex-end',
       alignItems: 'center',
-
       paddingHorizontal: 12,
-
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,
     },

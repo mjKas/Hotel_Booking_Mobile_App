@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import {
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
+
 import {
   Button,
   Divider,
@@ -14,10 +16,10 @@ import {
   Text,
   TextInput,
 } from 'react-native-paper';
+
 import { router } from 'expo-router';
 
 import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
-import { ThemeModeSelector } from '@/src/components/theme-mode-selector';
 
 type Booking = {
   id: string;
@@ -86,8 +88,13 @@ export default function ManageBookings() {
   const [status, setStatus] =
     useState<Booking['status']>('Confirmed');
 
+  // ==========================================
+  // OPEN EDIT
+  // ==========================================
+
   const openEdit = (booking: Booking) => {
     setEditingBooking(booking);
+
     setGuestName(booking.guestName);
     setEmail(booking.email);
     setRoom(booking.room);
@@ -97,8 +104,13 @@ export default function ManageBookings() {
     setStatus(booking.status);
   };
 
+  // ==========================================
+  // CLOSE EDIT
+  // ==========================================
+
   const closeEdit = () => {
     setEditingBooking(null);
+
     setGuestName('');
     setEmail('');
     setRoom('');
@@ -107,6 +119,10 @@ export default function ManageBookings() {
     setGuests('');
     setStatus('Confirmed');
   };
+
+  // ==========================================
+  // SAVE BOOKING
+  // ==========================================
 
   const saveBooking = () => {
     if (
@@ -122,6 +138,7 @@ export default function ManageBookings() {
         'Missing Information',
         'Please complete all booking fields.',
       );
+
       return;
     }
 
@@ -145,6 +162,10 @@ export default function ManageBookings() {
     closeEdit();
   };
 
+  // ==========================================
+  // DELETE BOOKING
+  // ==========================================
+
   const deleteBooking = (id: string) => {
     Alert.alert(
       'Delete Booking',
@@ -159,7 +180,9 @@ export default function ManageBookings() {
           style: 'destructive',
           onPress: () => {
             setBookings((current) =>
-              current.filter((booking) => booking.id !== id),
+              current.filter(
+                (booking) => booking.id !== id,
+              ),
             );
           },
         },
@@ -167,16 +190,23 @@ export default function ManageBookings() {
     );
   };
 
+  // ==========================================
+  // STATUS STYLE
+  // ==========================================
+
   const getStatusStyle = (
     bookingStatus: Booking['status'],
   ) => {
     switch (bookingStatus) {
       case 'Confirmed':
         return styles.confirmedStatus;
+
       case 'Pending':
         return styles.pendingStatus;
+
       case 'Cancelled':
         return styles.cancelledStatus;
+
       default:
         return styles.pendingStatus;
     }
@@ -190,7 +220,11 @@ export default function ManageBookings() {
           backgroundColor: colors.background,
         },
       ]}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={
+        Platform.OS === 'ios'
+          ? 'padding'
+          : 'height'
+      }
     >
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -198,101 +232,83 @@ export default function ManageBookings() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.container}>
+
+          {/* =====================================
+              HEADER + BRANDING
+              ===================================== */}
+
           <View style={styles.header}>
+
+           
+
+            {/* BRANDING */}
+
+            <View style={styles.branding}>
+
+              <Image
+                source={require('../../assets/images/royal-crest-logo.jpg')}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+
+              <View style={styles.brandingText}>
+
+                <Text style={styles.hotelName}>
+                  Royal Crest Hotel
+                </Text>
+
+                <Text style={styles.pageTitle}>
+                  Manage Bookings
+                </Text>
+
+                <Text style={styles.headerSubtitle}>
+                  {bookings.length}{' '}
+                  {bookings.length === 1
+                    ? 'booking'
+                    : 'bookings'}
+                </Text>
+
+              </View>
+
+            </View>
+
+            {/* ADD */}
+
             <Button
-              icon="menu"
               mode="text"
-              onPress={() => router.back()}
-              textColor={colors.textPrimary}
+              icon="plus"
               compact
-            />
-
-            <Text
-              style={[
-                styles.headerTitle,
-                {
-                  color: colors.textPrimary,
-                },
-              ]}
+              textColor="#000000"
+              onPress={() => {}}
+              style={styles.addButton}
+              labelStyle={styles.addButtonLabel}
             >
-              Manage Bookings
-            </Text>
+              Add
+            </Button>
 
-            <View style={styles.headerSpacer} />
           </View>
 
-          <View
-            style={[
-              styles.hero,
-              {
-                backgroundColor: colors.secondary,
-              },
-            ]}
-          >
-            <View>
-              <Text
-                style={[
-                  styles.heroTitle,
-                  {
-                    color: colors.textPrimary,
-                  },
-                ]}
-              >
-                Manage Bookings
-              </Text>
-
-              <Text
-                style={[
-                  styles.heroSubtitle,
-                  {
-                    color: colors.textSecondary,
-                  },
-                ]}
-              >
-                {bookings.length}{' '}
-                {bookings.length === 1
-                  ? 'booking'
-                  : 'bookings'}
-              </Text>
-            </View>
-
-            <View style={styles.themeSelector}>
-              <ThemeModeSelector />
-            </View>
-          </View>
+          {/* =====================================
+              BOOKING RECORDS
+              ===================================== */}
 
           {bookings.map((booking) => (
             <Surface
               key={booking.id}
               elevation={2}
-              style={[
-                styles.bookingCard,
-                {
-                  backgroundColor: colors.surface,
-                },
-              ]}
+              style={styles.bookingCard}
             >
+
+              {/* BOOKING HEADER */}
+
               <View style={styles.bookingTop}>
+
                 <View>
-                  <Text
-                    style={[
-                      styles.bookingId,
-                      {
-                        color: colors.textPrimary,
-                      },
-                    ]}
-                  >
+                  <Text style={styles.bookingId}>
                     {booking.id}
                   </Text>
 
-                  <Text
-                    style={[
-                      styles.bookingLabel,
-                      {
-                        color: colors.textSecondary,
-                      },
-                    ]}
-                  >
+                  <Text style={styles.bookingLabel}>
                     BOOKING
                   </Text>
                 </View>
@@ -300,228 +316,162 @@ export default function ManageBookings() {
                 <View
                   style={[
                     styles.statusBadge,
-                    getStatusStyle(booking.status),
+                    getStatusStyle(
+                      booking.status,
+                    ),
                   ]}
                 >
                   <Text style={styles.statusText}>
                     {booking.status.toUpperCase()}
                   </Text>
                 </View>
+
               </View>
 
-              <Text
-                style={[
-                  styles.guestName,
-                  {
-                    color: colors.textPrimary,
-                  },
-                ]}
-              >
+              {/* GUEST */}
+
+              <Text style={styles.guestName}>
                 {booking.guestName}
               </Text>
 
-              <Text
-                style={[
-                  styles.email,
-                  {
-                    color: colors.textSecondary,
-                  },
-                ]}
-              >
+              <Text style={styles.email}>
                 {booking.email}
               </Text>
 
-              <Divider
-                style={[
-                  styles.divider,
-                  {
-                    backgroundColor: colors.textSecondary,
-                  },
-                ]}
-              />
+              <Divider style={styles.divider} />
+
+              {/* ROOM / GUESTS */}
 
               <View style={styles.detailsRow}>
+
                 <View style={styles.detail}>
-                  <Text
-                    style={[
-                      styles.detailLabel,
-                      {
-                        color: colors.textSecondary,
-                      },
-                    ]}
-                  >
+
+                  <Text style={styles.detailLabel}>
                     ROOM
                   </Text>
 
-                  <Text
-                    style={[
-                      styles.detailValue,
-                      {
-                        color: colors.textPrimary,
-                      },
-                    ]}
-                  >
+                  <Text style={styles.detailValue}>
                     {booking.room}
                   </Text>
+
                 </View>
 
                 <View style={styles.detail}>
-                  <Text
-                    style={[
-                      styles.detailLabel,
-                      {
-                        color: colors.textSecondary,
-                      },
-                    ]}
-                  >
+
+                  <Text style={styles.detailLabel}>
                     GUESTS
                   </Text>
 
-                  <Text
-                    style={[
-                      styles.detailValue,
-                      {
-                        color: colors.textPrimary,
-                      },
-                    ]}
-                  >
+                  <Text style={styles.detailValue}>
                     {booking.guests}
                   </Text>
+
                 </View>
+
               </View>
 
+              {/* CHECK-IN / CHECK-OUT */}
+
               <View style={styles.detailsRow}>
+
                 <View style={styles.detail}>
-                  <Text
-                    style={[
-                      styles.detailLabel,
-                      {
-                        color: colors.textSecondary,
-                      },
-                    ]}
-                  >
+
+                  <Text style={styles.detailLabel}>
                     CHECK-IN
                   </Text>
 
-                  <Text
-                    style={[
-                      styles.detailValue,
-                      {
-                        color: colors.textPrimary,
-                      },
-                    ]}
-                  >
+                  <Text style={styles.detailValue}>
                     {booking.checkIn}
                   </Text>
+
                 </View>
 
                 <View style={styles.detail}>
-                  <Text
-                    style={[
-                      styles.detailLabel,
-                      {
-                        color: colors.textSecondary,
-                      },
-                    ]}
-                  >
+
+                  <Text style={styles.detailLabel}>
                     CHECK-OUT
                   </Text>
 
-                  <Text
-                    style={[
-                      styles.detailValue,
-                      {
-                        color: colors.textPrimary,
-                      },
-                    ]}
-                  >
+                  <Text style={styles.detailValue}>
                     {booking.checkOut}
                   </Text>
+
                 </View>
+
               </View>
 
+              {/* TOTAL */}
+
               <View style={styles.totalRow}>
-                <Text
-                  style={[
-                    styles.totalLabel,
-                    {
-                      color: colors.textSecondary,
-                    },
-                  ]}
-                >
+
+                <Text style={styles.totalLabel}>
                   TOTAL
                 </Text>
 
-                <Text
-                  style={[
-                    styles.totalValue,
-                    {
-                      color: colors.textPrimary,
-                    },
-                  ]}
-                >
+                <Text style={styles.totalValue}>
                   ${booking.total}
                 </Text>
+
               </View>
 
+              {/* ACTIONS */}
+
               <View style={styles.actionRow}>
+
                 <Button
                   mode="outlined"
-                  onPress={() => openEdit(booking)}
+                  onPress={() =>
+                    openEdit(booking)
+                  }
                   style={[
+                    styles.actionButton,
                     styles.editButton,
-                    {
-                      borderColor: colors.secondary,
-                    },
                   ]}
                   textColor={colors.secondary}
-                  contentStyle={styles.buttonContent}
+                  contentStyle={
+                    styles.buttonContent
+                  }
                 >
                   Edit
                 </Button>
 
                 <Button
                   mode="outlined"
-                  onPress={() => deleteBooking(booking.id)}
-                  style={styles.deleteButton}
+                  onPress={() =>
+                    deleteBooking(booking.id)
+                  }
+                  style={[
+                    styles.actionButton,
+                    styles.deleteButton,
+                  ]}
                   textColor={colors.error}
-                  contentStyle={styles.buttonContent}
+                  contentStyle={
+                    styles.buttonContent
+                  }
                 >
                   Delete
                 </Button>
+
               </View>
+
             </Surface>
           ))}
+
+          {/* =====================================
+              EDIT BOOKING
+              ===================================== */}
 
           {editingBooking && (
             <Surface
               elevation={3}
-              style={[
-                styles.editCard,
-                {
-                  backgroundColor: colors.surface,
-                },
-              ]}
+              style={styles.editCard}
             >
-              <Text
-                style={[
-                  styles.editTitle,
-                  {
-                    color: colors.textPrimary,
-                  },
-                ]}
-              >
+
+              <Text style={styles.editTitle}>
                 Edit Booking
               </Text>
 
-              <Text
-                style={[
-                  styles.editSubtitle,
-                  {
-                    color: colors.textSecondary,
-                  },
-                ]}
-              >
+              <Text style={styles.editSubtitle}>
                 Update booking information
               </Text>
 
@@ -530,15 +480,14 @@ export default function ManageBookings() {
                 label="Guest Name"
                 value={guestName}
                 onChangeText={setGuestName}
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: colors.surface,
-                  },
-                ]}
+                style={styles.input}
                 textColor={colors.textPrimary}
-                outlineColor={colors.textSecondary}
-                activeOutlineColor={colors.secondary}
+                outlineColor={
+                  colors.textSecondary
+                }
+                activeOutlineColor={
+                  colors.secondary
+                }
               />
 
               <TextInput
@@ -548,15 +497,14 @@ export default function ManageBookings() {
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: colors.surface,
-                  },
-                ]}
+                style={styles.input}
                 textColor={colors.textPrimary}
-                outlineColor={colors.textSecondary}
-                activeOutlineColor={colors.secondary}
+                outlineColor={
+                  colors.textSecondary
+                }
+                activeOutlineColor={
+                  colors.secondary
+                }
               />
 
               <TextInput
@@ -564,15 +512,14 @@ export default function ManageBookings() {
                 label="Room"
                 value={room}
                 onChangeText={setRoom}
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: colors.surface,
-                  },
-                ]}
+                style={styles.input}
                 textColor={colors.textPrimary}
-                outlineColor={colors.textSecondary}
-                activeOutlineColor={colors.secondary}
+                outlineColor={
+                  colors.textSecondary
+                }
+                activeOutlineColor={
+                  colors.secondary
+                }
               />
 
               <TextInput
@@ -581,15 +528,14 @@ export default function ManageBookings() {
                 value={checkIn}
                 onChangeText={setCheckIn}
                 placeholder="YYYY-MM-DD"
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: colors.surface,
-                  },
-                ]}
+                style={styles.input}
                 textColor={colors.textPrimary}
-                outlineColor={colors.textSecondary}
-                activeOutlineColor={colors.secondary}
+                outlineColor={
+                  colors.textSecondary
+                }
+                activeOutlineColor={
+                  colors.secondary
+                }
               />
 
               <TextInput
@@ -598,15 +544,14 @@ export default function ManageBookings() {
                 value={checkOut}
                 onChangeText={setCheckOut}
                 placeholder="YYYY-MM-DD"
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: colors.surface,
-                  },
-                ]}
+                style={styles.input}
                 textColor={colors.textPrimary}
-                outlineColor={colors.textSecondary}
-                activeOutlineColor={colors.secondary}
+                outlineColor={
+                  colors.textSecondary
+                }
+                activeOutlineColor={
+                  colors.secondary
+                }
               />
 
               <TextInput
@@ -615,29 +560,22 @@ export default function ManageBookings() {
                 value={guests}
                 onChangeText={setGuests}
                 keyboardType="numeric"
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: colors.surface,
-                  },
-                ]}
+                style={styles.input}
                 textColor={colors.textPrimary}
-                outlineColor={colors.textSecondary}
-                activeOutlineColor={colors.secondary}
+                outlineColor={
+                  colors.textSecondary
+                }
+                activeOutlineColor={
+                  colors.secondary
+                }
               />
 
-              <Text
-                style={[
-                  styles.statusHeading,
-                  {
-                    color: colors.textPrimary,
-                  },
-                ]}
-              >
+              <Text style={styles.statusHeading}>
                 Booking Status
               </Text>
 
               <View style={styles.statusButtons}>
+
                 {(
                   [
                     'Confirmed',
@@ -652,7 +590,9 @@ export default function ManageBookings() {
                         ? 'contained'
                         : 'outlined'
                     }
-                    onPress={() => setStatus(item)}
+                    onPress={() =>
+                      setStatus(item)
+                    }
                     style={styles.statusButton}
                     buttonColor={
                       status === item
@@ -668,14 +608,20 @@ export default function ManageBookings() {
                     {item}
                   </Button>
                 ))}
+
               </View>
 
+              {/* EDIT ACTIONS */}
+
               <View style={styles.editActions}>
+
                 <Button
                   mode="outlined"
                   onPress={closeEdit}
                   style={styles.cancelButton}
-                  textColor={colors.textSecondary}
+                  textColor={
+                    colors.textSecondary
+                  }
                 >
                   Cancel
                 </Button>
@@ -684,35 +630,51 @@ export default function ManageBookings() {
                   mode="contained"
                   onPress={saveBooking}
                   style={styles.saveButton}
-                  buttonColor={colors.secondary}
-                  textColor={colors.textPrimary}
+                  buttonColor={
+                    colors.secondary
+                  }
+                  textColor={
+                    colors.textPrimary
+                  }
                 >
                   Save Changes
                 </Button>
+
               </View>
+
             </Surface>
           )}
 
-          <Text
-            style={[
-              styles.footer,
-              {
-                color: colors.textSecondary,
-              },
-            ]}
-          >
-            Manage guest reservations and booking details.
+          {/* =====================================
+              FOOTER
+              ===================================== */}
+
+          <Text style={styles.footer}>
+            Manage guest reservations and
+            booking details.
           </Text>
+
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
+// ==========================================
+// STYLES
+// ==========================================
+
 const createStyles = (
-  colors: ReturnType<typeof useAppThemeColors>,
+  colors: ReturnType<
+    typeof useAppThemeColors
+  >,
 ) =>
   StyleSheet.create({
+
+    // ----------------------------------------
+    // MAIN
+    // ----------------------------------------
+
     keyboardContainer: {
       flex: 1,
     },
@@ -728,75 +690,127 @@ const createStyles = (
       paddingBottom: 30,
     },
 
+    // ----------------------------------------
+    // HEADER + BRANDING
+    // ----------------------------------------
+
     header: {
-      height: 80,
+      minHeight: 145,
+
+      paddingTop: 42,
+      paddingBottom: 20,
+      paddingHorizontal: 20,
+
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 20,
-      backgroundColor: colors.primary,
+
+      backgroundColor: colors.secondary,
+    },
+
+    branding: {
+      flex: 1,
+
+      flexDirection: 'row',
+      alignItems: 'center',
+
+      marginLeft: 6,
+    },
+
+    logo: {
+      width: 70,
+      height: 70,
+
+      borderRadius: 35,
+
+      backgroundColor: '#FFFFFF',
+    },
+
+    brandingText: {
+      flex: 1,
+      marginLeft: 14,
+    },
+
+     pageTitle: {
+      color: colors.headerText,
+      fontSize: 16,
+      fontWeight: '700',
+      marginTop: 2,
+    },
+
+    hotelName: {
+      fontSize: 23,
+      fontWeight: '800',
+      color: '#FFFFFF',
     },
 
     headerTitle: {
-      fontSize: 22,
-      fontWeight: '700',
-    },
-
-    headerSpacer: {
-      width: 48,
-    },
-
-    hero: {
-      minHeight: 180,
-      paddingHorizontal: 42,
-      paddingVertical: 34,
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-
-    heroTitle: {
-      fontSize: 40,
+      fontSize: 21,
       fontWeight: '800',
+      color: '#FFFFFF',
+
+      marginTop: 1,
     },
 
-    heroSubtitle: {
-      fontSize: 20,
-      marginTop: 4,
+    headerSubtitle: {
+      fontSize: 16,
+      color: '#FFFFFF',
+
+      marginTop: 1,
     },
 
-    themeSelector: {
-      alignSelf: 'center',
+    addButton: {
+      marginLeft: 6,
     },
+
+    addButtonLabel: {
+      fontSize: 16,
+      color: '#000000',
+    },
+
+    // ----------------------------------------
+    // BOOKING CARD
+    // ----------------------------------------
 
     bookingCard: {
       marginHorizontal: 34,
-      marginTop: 28,
-      borderRadius: 24,
-      padding: 34,
+      marginTop: 18,
+
+      borderRadius: 18,
+
+      padding: 22,
+
+      backgroundColor: colors.surface,
     },
 
     bookingTop: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      alignItems: 'flex-start',
+      alignItems: 'center',
     },
 
     bookingId: {
-      fontSize: 30,
+      fontSize: 24,
       fontWeight: '800',
+      color: colors.textPrimary,
     },
 
     bookingLabel: {
-      fontSize: 13,
+      fontSize: 10,
       fontWeight: '700',
-      marginTop: -2,
+      color: colors.textSecondary,
+
+      marginTop: -1,
     },
+
+    // ----------------------------------------
+    // STATUS
+    // ----------------------------------------
 
     statusBadge: {
       borderRadius: 30,
-      paddingHorizontal: 22,
-      paddingVertical: 12,
+
+      paddingHorizontal: 16,
+      paddingVertical: 9,
     },
 
     confirmedStatus: {
@@ -813,31 +827,52 @@ const createStyles = (
 
     statusText: {
       color: '#FFFFFF',
-      fontSize: 13,
+
+      fontSize: 10,
       fontWeight: '800',
-      letterSpacing: 0.5,
+
+      letterSpacing: 0.4,
     },
 
+    // ----------------------------------------
+    // GUEST
+    // ----------------------------------------
+
     guestName: {
-      fontSize: 26,
+      fontSize: 20,
       fontWeight: '700',
-      marginTop: 30,
+
+      marginTop: 20,
+
+      color: colors.textPrimary,
     },
 
     email: {
-      fontSize: 16,
-      marginTop: 5,
+      fontSize: 14,
+
+      marginTop: 4,
+
+      color: colors.textSecondary,
     },
 
     divider: {
-      marginVertical: 20,
+      marginVertical: 15,
+
       opacity: 0.35,
+
+      backgroundColor:
+        colors.textSecondary,
     },
+
+    // ----------------------------------------
+    // DETAILS
+    // ----------------------------------------
 
     detailsRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      marginBottom: 18,
+
+      marginBottom: 14,
     },
 
     detail: {
@@ -845,83 +880,125 @@ const createStyles = (
     },
 
     detailLabel: {
-      fontSize: 12,
+      fontSize: 10,
       fontWeight: '700',
-      marginBottom: 4,
+
+      marginBottom: 3,
+
+      color: colors.textSecondary,
     },
 
     detailValue: {
-      fontSize: 17,
+      fontSize: 15,
       fontWeight: '600',
+
+      color: colors.textPrimary,
     },
+
+    // ----------------------------------------
+    // TOTAL
+    // ----------------------------------------
 
     totalRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginTop: 6,
-      marginBottom: 24,
+
+      marginTop: 2,
+      marginBottom: 18,
     },
 
     totalLabel: {
-      fontSize: 14,
+      fontSize: 12,
       fontWeight: '700',
+
+      color: colors.textSecondary,
     },
 
     totalValue: {
-      fontSize: 22,
+      fontSize: 19,
       fontWeight: '800',
+
+      color: colors.textPrimary,
     },
+
+    // ----------------------------------------
+    // ACTION BUTTONS
+    // ----------------------------------------
 
     actionRow: {
       flexDirection: 'row',
-      gap: 14,
+      gap: 10,
+    },
+
+    actionButton: {
+      flex: 1,
+      borderRadius: 8,
     },
 
     editButton: {
-      flex: 1,
+      borderColor: colors.secondary,
       borderWidth: 1.5,
-      borderRadius: 10,
     },
 
     deleteButton: {
-      flex: 1,
-      borderWidth: 1.5,
       borderColor: colors.error,
-      borderRadius: 10,
+      borderWidth: 1.5,
     },
 
     buttonContent: {
-      height: 50,
+      height: 44,
     },
+
+    // ----------------------------------------
+    // EDIT CARD
+    // ----------------------------------------
 
     editCard: {
       marginHorizontal: 34,
-      marginTop: 28,
-      borderRadius: 24,
-      padding: 28,
+      marginTop: 20,
+
+      borderRadius: 18,
+
+      padding: 22,
+
+      backgroundColor: colors.surface,
     },
 
     editTitle: {
-      fontSize: 28,
+      fontSize: 24,
       fontWeight: '800',
+
+      color: colors.textPrimary,
     },
 
     editSubtitle: {
-      fontSize: 16,
-      marginTop: 4,
-      marginBottom: 22,
+      fontSize: 14,
+
+      marginTop: 3,
+      marginBottom: 18,
+
+      color: colors.textSecondary,
     },
 
     input: {
-      marginBottom: 14,
+      marginBottom: 12,
+
+      backgroundColor: colors.surface,
     },
 
+    // ----------------------------------------
+    // STATUS EDIT
+    // ----------------------------------------
+
     statusHeading: {
-      fontSize: 16,
+      fontSize: 15,
       fontWeight: '700',
-      marginTop: 8,
-      marginBottom: 10,
+
+      marginTop: 6,
+      marginBottom: 9,
+
+      color: colors.textPrimary,
     },
 
     statusButtons: {
@@ -931,29 +1008,42 @@ const createStyles = (
     },
 
     statusButton: {
-      borderRadius: 10,
+      borderRadius: 8,
     },
+
+    // ----------------------------------------
+    // EDIT ACTIONS
+    // ----------------------------------------
 
     editActions: {
       flexDirection: 'row',
-      gap: 12,
-      marginTop: 24,
+      gap: 10,
+
+      marginTop: 20,
     },
 
     cancelButton: {
       flex: 1,
-      borderRadius: 10,
+      borderRadius: 8,
     },
 
     saveButton: {
       flex: 1,
-      borderRadius: 10,
+      borderRadius: 8,
     },
+
+    // ----------------------------------------
+    // FOOTER
+    // ----------------------------------------
 
     footer: {
       textAlign: 'center',
-      fontSize: 14,
+
+      fontSize: 13,
+
       marginHorizontal: 30,
-      marginTop: 24,
+      marginTop: 20,
+
+      color: colors.textSecondary,
     },
   });

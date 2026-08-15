@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   Alert,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -16,7 +17,6 @@ import {
 } from 'react-native-paper';
 
 import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
-import { ThemeModeSelector } from '@/src/components/theme-mode-selector';
 
 type User = {
   id: number;
@@ -62,9 +62,8 @@ export default function ManageUser() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [role, setRole] = useState<'Customer' | 'Admin'>(
-    'Customer',
-  );
+  const [role, setRole] =
+    useState<'Customer' | 'Admin'>('Customer');
 
   const [submitted, setSubmitted] = useState(false);
 
@@ -173,114 +172,254 @@ export default function ManageUser() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.headerTitle}>
+        <View style={styles.container}>
+
+          {/* ============================= */}
+          {/* BRANDING HEADER */}
+          {/* Same style as Manage Rooms */}
+          {/* ============================= */}
+
+          <View
+            style={[
+              styles.brandingHeader,
+              {
+                backgroundColor: colors.secondary,
+              },
+            ]}
+          >
+            <View style={styles.brandingContent}>
+
+              {/* Logo */}
+              <Image
+                source={require('../../assets/images/royal-crest-logo.jpg')}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+
+              {/* Branding Text */}
+              <View style={styles.brandingText}>
+                <Text style={styles.hotelName}>
+                  Royal Crest Hotel
+                </Text>
+
+                <Text style={styles.userCount}>
+                  {users.length}{' '}
+                  {users.length === 1
+                    ? 'user'
+                    : 'users'}
+                </Text>
+              </View>
+
+              {/* Add Button */}
+              <Button
+                mode="text"
+                onPress={openAddUser}
+                icon="plus"
+                textColor="#000000"
+                labelStyle={styles.addButtonLabel}
+                compact
+              >
+                Add
+              </Button>
+
+            </View>
+          </View>
+
+          {/* ============================= */}
+          {/* TOP NAVIGATION HEADER */}
+          {/* ============================= */}
+
+          <View style={styles.topHeader}>
+            <View style={styles.menuPlaceholder} />
+
+            <Text
+              style={[
+                styles.topHeaderTitle,
+                {
+                  color: '#FFFFFF',
+                },
+              ]}
+            >
               Manage Users
             </Text>
 
-            <Text style={styles.headerSubtitle}>
-              {users.length} users
-            </Text>
+            <View style={styles.topHeaderSpacer} />
           </View>
 
-          <Button
-            mode="text"
-            onPress={openAddUser}
-            icon="plus"
-            textColor="#000000"
-            labelStyle={styles.addButtonLabel}
-          >
-            Add
-          </Button>
-        </View>
+          {/* ============================= */}
+          {/* USERS */}
+          {/* ============================= */}
 
-        {/* Theme */}
-        <View style={styles.themeSelector}>
-          <ThemeModeSelector />
-        </View>
+          <View style={styles.userList}>
+            {users.map((user) => (
+              <Surface
+                key={user.id}
+                elevation={2}
+                style={[
+                  styles.userCard,
+                  {
+                    backgroundColor: colors.surface,
+                  },
+                ]}
+              >
+                {/* User Top */}
+                <View style={styles.userTopRow}>
 
-        {/* Users */}
-        <View style={styles.userList}>
-          {users.map((user) => (
-            <Surface
-              key={user.id}
-              elevation={2}
-              style={styles.userCard}
-            >
-              <View style={styles.userTopRow}>
-                <View style={styles.userIcon}>
-                  <Text style={styles.userIconText}>
-                    {user.name.charAt(0).toUpperCase()}
-                  </Text>
+                  <View
+                    style={[
+                      styles.userIcon,
+                      {
+                        backgroundColor: colors.secondary,
+                      },
+                    ]}
+                  >
+                    <Text style={styles.userIconText}>
+                      {user.name
+                        .charAt(0)
+                        .toUpperCase()}
+                    </Text>
+                  </View>
+
+                  <View style={styles.userInfo}>
+                    <Text
+                      style={[
+                        styles.userName,
+                        {
+                          color: colors.textPrimary,
+                        },
+                      ]}
+                    >
+                      {user.name}
+                    </Text>
+
+                    <Text
+                      style={[
+                        styles.userRole,
+                        {
+                          color: colors.secondary,
+                        },
+                      ]}
+                    >
+                      {user.role}
+                    </Text>
+                  </View>
                 </View>
 
-                <View style={styles.userInfo}>
-                  <Text style={styles.userName}>
-                    {user.name}
+                {/* User Details */}
+                <View style={styles.userDetails}>
+                  <Text
+                    style={[
+                      styles.detailText,
+                      {
+                        color: colors.textSecondary,
+                      },
+                    ]}
+                  >
+                    {user.email}
                   </Text>
 
-                  <Text style={styles.userRole}>
-                    {user.role}
-                  </Text>
+                  {user.phone ? (
+                    <Text
+                      style={[
+                        styles.detailText,
+                        {
+                          color: colors.textSecondary,
+                        },
+                      ]}
+                    >
+                      {user.phone}
+                    </Text>
+                  ) : null}
                 </View>
-              </View>
 
-              <View style={styles.userDetails}>
-                <Text style={styles.detailText}>
-                  {user.email}
+                {/* Actions */}
+                <View style={styles.actions}>
+                  <Button
+                    mode="outlined"
+                    onPress={() =>
+                      openEditUser(user)
+                    }
+                    style={[
+                      styles.editButton,
+                      {
+                        borderColor:
+                          colors.secondary,
+                      },
+                    ]}
+                    contentStyle={
+                      styles.actionContent
+                    }
+                    labelStyle={[
+                      styles.editButtonLabel,
+                      {
+                        color: colors.secondary,
+                      },
+                    ]}
+                  >
+                    Edit
+                  </Button>
+
+                  <Button
+                    mode="outlined"
+                    onPress={() =>
+                      handleDelete(user)
+                    }
+                    style={styles.deleteButton}
+                    contentStyle={
+                      styles.actionContent
+                    }
+                    labelStyle={
+                      styles.deleteButtonLabel
+                    }
+                  >
+                    Delete
+                  </Button>
+                </View>
+              </Surface>
+            ))}
+
+            {users.length === 0 && (
+              <Surface
+                elevation={1}
+                style={[
+                  styles.emptyCard,
+                  {
+                    backgroundColor:
+                      colors.surface,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.emptyTitle,
+                    {
+                      color: colors.textPrimary,
+                    },
+                  ]}
+                >
+                  No users found
                 </Text>
 
-                {user.phone ? (
-                  <Text style={styles.detailText}>
-                    {user.phone}
-                  </Text>
-                ) : null}
-              </View>
-
-              <View style={styles.actions}>
-                <Button
-                  mode="outlined"
-                  onPress={() => openEditUser(user)}
-                  style={styles.editButton}
-                  contentStyle={styles.actionContent}
-                  labelStyle={styles.editButtonLabel}
+                <Text
+                  style={[
+                    styles.emptyText,
+                    {
+                      color: colors.textSecondary,
+                    },
+                  ]}
                 >
-                  Edit
-                </Button>
-
-                <Button
-                  mode="outlined"
-                  onPress={() => handleDelete(user)}
-                  style={styles.deleteButton}
-                  contentStyle={styles.actionContent}
-                  labelStyle={styles.deleteButtonLabel}
-                >
-                  Delete
-                </Button>
-              </View>
-            </Surface>
-          ))}
-
-          {users.length === 0 && (
-            <Surface
-              elevation={1}
-              style={styles.emptyCard}
-            >
-              <Text style={styles.emptyTitle}>
-                No users found
-              </Text>
-
-              <Text style={styles.emptyText}>
-                Add a new user to get started.
-              </Text>
-            </Surface>
-          )}
+                  Add a new user to get started.
+                </Text>
+              </Surface>
+            )}
+          </View>
         </View>
       </ScrollView>
 
-      {/* Add / Edit Modal */}
+      {/* ============================= */}
+      {/* ADD / EDIT MODAL */}
+      {/* ============================= */}
+
       <Modal
         visible={modalVisible}
         animationType="slide"
@@ -304,18 +443,33 @@ export default function ManageUser() {
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
               >
-                <Text style={styles.modalTitle}>
+                <Text
+                  style={[
+                    styles.modalTitle,
+                    {
+                      color: colors.textPrimary,
+                    },
+                  ]}
+                >
                   {editingUser
                     ? 'Edit User'
                     : 'Add User'}
                 </Text>
 
-                <Text style={styles.modalSubtitle}>
+                <Text
+                  style={[
+                    styles.modalSubtitle,
+                    {
+                      color: colors.textSecondary,
+                    },
+                  ]}
+                >
                   {editingUser
                     ? 'Update the user information'
                     : 'Create a new user account'}
                 </Text>
 
+                {/* Name */}
                 <TextInput
                   mode="outlined"
                   label="Full Name"
@@ -323,12 +477,20 @@ export default function ManageUser() {
                   onChangeText={setName}
                   autoCapitalize="words"
                   autoCorrect={false}
-                  style={styles.modalInput}
+                  style={[
+                    styles.modalInput,
+                    {
+                      backgroundColor:
+                        colors.surface,
+                    },
+                  ]}
                   error={
                     submitted && !name.trim()
                   }
                   textColor={colors.textPrimary}
-                  outlineColor={colors.textFieldOutline}
+                  outlineColor={
+                    colors.textFieldOutline
+                  }
                   activeOutlineColor={
                     colors.textFieldActiveOutline
                   }
@@ -343,6 +505,7 @@ export default function ManageUser() {
                   </Text>
                 )}
 
+                {/* Email */}
                 <TextInput
                   mode="outlined"
                   label="Email Address"
@@ -351,12 +514,20 @@ export default function ManageUser() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
-                  style={styles.modalInput}
+                  style={[
+                    styles.modalInput,
+                    {
+                      backgroundColor:
+                        colors.surface,
+                    },
+                  ]}
                   error={
                     submitted && !email.trim()
                   }
                   textColor={colors.textPrimary}
-                  outlineColor={colors.textFieldOutline}
+                  outlineColor={
+                    colors.textFieldOutline
+                  }
                   activeOutlineColor={
                     colors.textFieldActiveOutline
                   }
@@ -371,6 +542,7 @@ export default function ManageUser() {
                   </Text>
                 )}
 
+                {/* Phone */}
                 <TextInput
                   mode="outlined"
                   label="Phone Number"
@@ -378,9 +550,17 @@ export default function ManageUser() {
                   onChangeText={setPhone}
                   keyboardType="phone-pad"
                   autoCorrect={false}
-                  style={styles.modalInput}
+                  style={[
+                    styles.modalInput,
+                    {
+                      backgroundColor:
+                        colors.surface,
+                    },
+                  ]}
                   textColor={colors.textPrimary}
-                  outlineColor={colors.textFieldOutline}
+                  outlineColor={
+                    colors.textFieldOutline
+                  }
                   activeOutlineColor={
                     colors.textFieldActiveOutline
                   }
@@ -389,7 +569,15 @@ export default function ManageUser() {
                   }
                 />
 
-                <Text style={styles.roleLabel}>
+                {/* Role */}
+                <Text
+                  style={[
+                    styles.roleLabel,
+                    {
+                      color: colors.textPrimary,
+                    },
+                  ]}
+                >
                   User Role
                 </Text>
 
@@ -410,9 +598,7 @@ export default function ManageUser() {
                         : undefined
                     }
                     textColor={
-                      role === 'Customer'
-                        ? colors.textPrimary
-                        : colors.textPrimary
+                      colors.textPrimary
                     }
                   >
                     Customer
@@ -441,11 +627,14 @@ export default function ManageUser() {
                   </Button>
                 </View>
 
+                {/* Save */}
                 <Button
                   mode="contained"
                   onPress={handleSave}
                   style={styles.saveButton}
-                  contentStyle={styles.saveButtonContent}
+                  contentStyle={
+                    styles.saveButtonContent
+                  }
                   buttonColor={colors.secondary}
                   textColor={colors.textPrimary}
                 >
@@ -454,11 +643,14 @@ export default function ManageUser() {
                     : 'Add User'}
                 </Button>
 
+                {/* Cancel */}
                 <Button
                   mode="text"
                   onPress={closeModal}
                   style={styles.cancelButton}
-                  textColor={colors.textSecondary}
+                  textColor={
+                    colors.textSecondary
+                  }
                 >
                   Cancel
                 </Button>
@@ -471,6 +663,10 @@ export default function ManageUser() {
   );
 }
 
+/* ================================================= */
+/* STYLES */
+/* ================================================= */
+
 const createStyles = (
   colors: ReturnType<typeof useAppThemeColors>,
 ) =>
@@ -480,29 +676,84 @@ const createStyles = (
     },
 
     scrollContent: {
-      paddingBottom: 40,
+      flexGrow: 1,
+      paddingBottom: 30,
     },
 
-    header: {
-      backgroundColor: colors.secondary,
-      paddingHorizontal: 42,
-      paddingTop: 42,
-      paddingBottom: 36,
+    container: {
+      width: '100%',
+      maxWidth: 700,
+      alignSelf: 'center',
+    },
+
+    /* ============================= */
+    /* TOP HEADER */
+    /* ============================= */
+
+    topHeader: {
+      height: 80,
+      backgroundColor: colors.primary,
       flexDirection: 'row',
-      justifyContent: 'space-between',
       alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 20,
     },
 
-    headerTitle: {
+    menuPlaceholder: {
+      width: 48,
+    },
+
+    topHeaderTitle: {
+      fontSize: 22,
+      fontWeight: '700',
+      textAlign: 'center',
+    },
+
+    topHeaderSpacer: {
+      width: 48,
+    },
+
+    /* ============================= */
+    /* BRANDING HEADER */
+    /* ============================= */
+
+    brandingHeader: {
+      minHeight: 160,
+      paddingHorizontal: 42,
+      paddingVertical: 22,
+      justifyContent: 'center',
+    },
+
+    brandingContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      width: '100%',
+    },
+
+    logo: {
+      width: 82,
+      height: 82,
+      borderRadius: 41,
+      backgroundColor: '#FFFFFF',
+      marginRight: 18,
+    },
+
+    brandingText: {
+      flex: 1,
+      justifyContent: 'center',
+    },
+
+    hotelName: {
       color: '#FFFFFF',
-      fontSize: 34,
+      fontSize: 27,
       fontWeight: '800',
+      lineHeight: 32,
     },
 
-    headerSubtitle: {
+    userCount: {
       color: '#FFFFFF',
       fontSize: 18,
-      marginTop: 4,
+      marginTop: 2,
     },
 
     addButtonLabel: {
@@ -511,20 +762,17 @@ const createStyles = (
       fontWeight: '500',
     },
 
-    themeSelector: {
-      paddingHorizontal: 34,
-      paddingTop: 18,
-      paddingBottom: 8,
-    },
+    /* ============================= */
+    /* USER LIST */
+    /* ============================= */
 
     userList: {
       paddingHorizontal: 34,
-      paddingTop: 18,
+      paddingTop: 34,
       gap: 18,
     },
 
     userCard: {
-      backgroundColor: colors.surface,
       borderRadius: 24,
       padding: 28,
     },
@@ -538,7 +786,6 @@ const createStyles = (
       width: 64,
       height: 64,
       borderRadius: 32,
-      backgroundColor: colors.primary,
       alignItems: 'center',
       justifyContent: 'center',
       marginRight: 18,
@@ -555,13 +802,11 @@ const createStyles = (
     },
 
     userName: {
-      color: colors.textPrimary,
       fontSize: 24,
       fontWeight: '800',
     },
 
     userRole: {
-      color: colors.secondary,
       fontSize: 15,
       fontWeight: '700',
       marginTop: 3,
@@ -574,7 +819,6 @@ const createStyles = (
     },
 
     detailText: {
-      color: colors.textSecondary,
       fontSize: 16,
     },
 
@@ -586,7 +830,6 @@ const createStyles = (
 
     editButton: {
       flex: 1,
-      borderColor: colors.secondary,
       borderWidth: 1.5,
       borderRadius: 12,
     },
@@ -603,7 +846,6 @@ const createStyles = (
     },
 
     editButtonLabel: {
-      color: colors.secondary,
       fontSize: 17,
       fontWeight: '600',
     },
@@ -615,23 +857,24 @@ const createStyles = (
     },
 
     emptyCard: {
-      backgroundColor: colors.surface,
       borderRadius: 20,
       padding: 30,
       alignItems: 'center',
     },
 
     emptyTitle: {
-      color: colors.textPrimary,
       fontSize: 22,
       fontWeight: '700',
     },
 
     emptyText: {
-      color: colors.textSecondary,
       fontSize: 16,
       marginTop: 8,
     },
+
+    /* ============================= */
+    /* MODAL */
+    /* ============================= */
 
     modalContainer: {
       flex: 1,
@@ -654,13 +897,11 @@ const createStyles = (
     },
 
     modalTitle: {
-      color: colors.textPrimary,
       fontSize: 28,
       fontWeight: '800',
     },
 
     modalSubtitle: {
-      color: colors.textSecondary,
       fontSize: 15,
       marginTop: 5,
       marginBottom: 24,
@@ -668,7 +909,6 @@ const createStyles = (
 
     modalInput: {
       marginBottom: 12,
-      backgroundColor: colors.surface,
     },
 
     errorText: {
@@ -679,7 +919,6 @@ const createStyles = (
     },
 
     roleLabel: {
-      color: colors.textPrimary,
       fontSize: 16,
       fontWeight: '600',
       marginTop: 8,
