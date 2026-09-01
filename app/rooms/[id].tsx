@@ -13,35 +13,46 @@ import {
 } from 'react-native-paper';
 import { router, useLocalSearchParams } from 'expo-router';
 
+import {
+  ErrorState,
+  LoadingState,
+} from '@/src/components/screen-states';
+import { useRoom } from '@/src/hooks/queries';
 import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
-
-const room = {
-  id: '1',
-  roomNumber: '101',
-  type: 'Deluxe Room',
-  price: 120,
-  capacity: 2,
-  description:
-    'Enjoy a comfortable and relaxing stay in our beautifully designed Deluxe Room. The room combines modern facilities with a warm and welcoming atmosphere.',
-  images: [
-    'https://images.unsplash.com/photo-1611892440504-42a792e24d32',
-    'https://images.unsplash.com/photo-1590490360182-c33d57733427',
-  ],
-  amenities: [
-    'Free WiFi',
-    'Air Conditioning',
-    'Smart TV',
-    'Private Bathroom',
-    'Mini Bar',
-    'Room Service',
-  ],
-};
+import { formatMoney } from '@/src/lib/format';
+import { ROOM_STATUS_LABELS } from '@/src/types/domain';
 
 export default function RoomDetailsScreen() {
   const colors = useAppThemeColors();
   const styles = createStyles(colors);
 
-  useLocalSearchParams();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const roomId = Number(id);
+
+  const { data: room, isPending, isError, error, refetch } = useRoom(
+    Number.isFinite(roomId) ? roomId : null,
+  );
+
+  if (isPending) {
+    return <LoadingState label="Loading this room…" />;
+  }
+
+  if (isError) {
+    return (
+      <ErrorState
+        error={error}
+        onRetry={() => void refetch()}
+        fallback="We could not load this room."
+      />
+    );
+  }
+
+  const images = room.roomType.imageUrl
+    ? [room.roomType.imageUrl]
+    : [];
+
+  const isBookable =
+    room.status === 'AVAILABLE' || room.status === 'OCCUPIED';
 
   return (
     <ScrollView
@@ -67,22 +78,30 @@ export default function RoomDetailsScreen() {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
       >
-        {room.images.map((image, index) => (
+        {(images.length > 0 ? images : [null]).map((image, index) => (
           <View key={index}>
             <View style={styles.imageContainer}>
               <Text style={styles.imageNumber}>
-                {index + 1} / {room.images.length}
+                {index + 1} / {Math.max(1, images.length)}
               </Text>
 
-              <View
-                style={[
-                  styles.image,
-                  {
-                    backgroundColor:
-                      colors.imagePlaceholder,
-                  },
-                ]}
-              />
+              {image ? (
+                <Image
+                  source={{ uri: image }}
+                  style={styles.image}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View
+                  style={[
+                    styles.image,
+                    {
+                      backgroundColor:
+                        colors.imagePlaceholder,
+                    },
+                  ]}
+                />
+              )}
             </View>
           </View>
         ))}
@@ -91,16 +110,16 @@ export default function RoomDetailsScreen() {
       {/* Room Information */}
       <View style={styles.content}>
         <Text style={styles.type}>
-          {room.type}
+          {room.roomType.name}
         </Text>
 
         <Text style={styles.roomNumber}>
-          Room {room.roomNumber}
+          Room {room.roomNumber} · Floor {room.floor}
         </Text>
 
         <View style={styles.priceRow}>
           <Text style={styles.price}>
-            ${room.price}
+            {formatMoney(room.nightlyRate)}
           </Text>
 
           <Text style={styles.perNight}>
@@ -110,7 +129,7 @@ export default function RoomDetailsScreen() {
 
         <View style={styles.capacity}>
           <Text style={styles.capacityText}>
-            Suitable for {room.capacity} guests
+            Suitable for {room.roomType.maxOccupancy} guests
           </Text>
         </View>
 
@@ -121,34 +140,41 @@ export default function RoomDetailsScreen() {
         </Text>
 
         <Text style={styles.description}>
-          {room.description}
+          {room.description || room.roomType.description}
         </Text>
 
-        <Text style={styles.heading}>
-          Amenities
-        </Text>
+        {room.roomType.amenities.length > 0 ? (
+          <>
+            <Text style={styles.heading}>
+              Amenities
+            </Text>
 
-        <View style={styles.amenities}>
-          {room.amenities.map((amenity) => (
-            <Chip
-              key={amenity}
-              style={styles.chip}
-              textStyle={styles.chipText}
-            >
-              {amenity}
-            </Chip>
-          ))}
-        </View>
+            <View style={styles.amenities}>
+              {room.roomType.amenities.map((amenity) => (
+                <Chip
+                  key={amenity}
+                  style={styles.chip}
+                  textStyle={styles.chipText}
+                >
+                  {amenity}
+                </Chip>
+              ))}
+            </View>
+          </>
+        ) : null}
 
         <Button
           mode="contained"
           style={styles.bookButton}
           contentStyle={styles.bookButtonContent}
+          disabled={!isBookable}
           onPress={() =>
-            router.push('/bookings/create')
+            router.push(`/bookings/create?roomId=${room.id}`)
           }
         >
-          Book This Room
+          {isBookable
+            ? 'Book This Room'
+            : `Unavailable — ${ROOM_STATUS_LABELS[room.status]}`}
         </Button>
 
         <Button

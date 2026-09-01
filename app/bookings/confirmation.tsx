@@ -1,21 +1,52 @@
 import React from 'react';
 import {
   Image,
+  ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
 import { Button, Text } from 'react-native-paper';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
+import {
+  ErrorState,
+  LoadingState,
+} from '@/src/components/screen-states';
+import { useBooking } from '@/src/hooks/queries';
 import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
+import { formatDate, formatMoney } from '@/src/lib/format';
 
 export default function BookingConfirmationScreen() {
   const colors = useAppThemeColors();
   const styles = createStyles(colors);
 
-  return (
-    <View style={styles.container}>
+  const { bookingId } = useLocalSearchParams<{ bookingId?: string }>();
+  const id = Number(bookingId);
 
+  const { data: booking, isPending, isError, error, refetch } = useBooking(
+    Number.isFinite(id) && id > 0 ? id : null,
+  );
+
+  if (isPending) {
+    return <LoadingState label="Confirming your booking…" />;
+  }
+
+  if (isError) {
+    return (
+      <ErrorState
+        error={error}
+        onRetry={() => void refetch()}
+        fallback="We could not load your confirmation."
+      />
+    );
+  }
+
+  return (
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
       {/* Hotel Branding */}
       <View style={styles.branding}>
         <Image
@@ -50,21 +81,22 @@ export default function BookingConfirmationScreen() {
         </Text>
 
         <Text style={styles.bookingNumber}>
-          BK-1024
+          {booking.reference}
         </Text>
 
         <View style={styles.divider} />
 
         <Text style={styles.room}>
-          Deluxe Room
+          {booking.room.roomType.name}
         </Text>
 
         <Text style={styles.details}>
-          08 Aug – 10 Aug 2026
+          {formatDate(booking.checkIn)} – {formatDate(booking.checkOut)}
         </Text>
 
         <Text style={styles.details}>
-          2 Guests
+          {booking.guests} {booking.guests === 1 ? 'Guest' : 'Guests'} · Room{' '}
+          {booking.room.roomNumber}
         </Text>
 
         <View style={styles.divider} />
@@ -74,7 +106,7 @@ export default function BookingConfirmationScreen() {
         </Text>
 
         <Text style={styles.total}>
-          $264
+          {formatMoney(booking.totalPrice, booking.currency)}
         </Text>
       </View>
 
@@ -82,7 +114,7 @@ export default function BookingConfirmationScreen() {
       <Button
         mode="contained"
         onPress={() =>
-          router.push('/bookings/1024')
+          router.replace(`/bookings/${booking.id}`)
         }
         style={styles.button}
         contentStyle={styles.buttonContent}
@@ -100,7 +132,7 @@ export default function BookingConfirmationScreen() {
       >
         Back to Home
       </Button>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -111,9 +143,13 @@ const createStyles = (
     container: {
       flex: 1,
       backgroundColor: colors.background,
+    },
+
+    content: {
       alignItems: 'center',
       paddingHorizontal: 24,
       paddingTop: 35,
+      paddingBottom: 40,
     },
 
     /* Hotel Branding */

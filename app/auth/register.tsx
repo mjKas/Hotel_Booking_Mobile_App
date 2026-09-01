@@ -18,8 +18,19 @@ import { router } from 'expo-router';
 
 import { useThemeColor } from '@/src/hooks/use-theme-color';
 import { ThemeModeSelector } from '@/src/components/theme-mode-selector';
+import { RequireAnonymous } from '@/src/components/route-guards';
+import { useAuthStore } from '@/src/store/authStore';
+import { ApiError, toErrorMessage } from '@/src/api/apiError';
 
 export default function RegisterScreen() {
+  return (
+    <RequireAnonymous>
+      <RegisterForm />
+    </RequireAnonymous>
+  );
+}
+
+function RegisterForm() {
   const backgroundColor = useThemeColor({}, 'background');
   const surfaceColor = useThemeColor({}, 'surface');
 
@@ -64,19 +75,32 @@ export default function RegisterScreen() {
     useState(false);
 
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+
+  const register = useAuthStore((state) => state.register);
 
   const isEmailValid =
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-  const isPasswordValid = password.length >= 8;
+  // Mirrors the server's rule in app/schemas/api.py, so a valid-looking form
+  // is not rejected after the round trip.
+  const isPasswordValid =
+    password.length >= 10 &&
+    /[a-z]/.test(password) &&
+    /[A-Z]/.test(password) &&
+    /\d/.test(password);
 
   const passwordsMatch =
     password.length > 0 &&
     confirmPassword.length > 0 &&
     password === confirmPassword;
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     setSubmitted(true);
+    setFormError(null);
+    setEmailError(null);
 
     if (
       !fullName.trim() ||
@@ -88,14 +112,31 @@ export default function RegisterScreen() {
       return;
     }
 
-    const values = {
-      fullName: fullName.trim(),
-      email: email.trim(),
-      phone: phone.trim() || undefined,
-      password,
-    };
+    setIsSubmitting(true);
 
-    console.log('Registration:', values);
+    try {
+      await register({
+        fullName: fullName.trim(),
+        email: email.trim(),
+        phone: phone.trim() || undefined,
+        password,
+      });
+
+      // Registration always creates a customer account, and it signs you in.
+      router.replace('/customer/tabs');
+    } catch (error) {
+      // A duplicate email comes back as a 409 with a field error, which
+      // belongs on the email input rather than in the general banner.
+      if (error instanceof ApiError && error.fieldErrors?.email) {
+        setEmailError(error.fieldErrors.email);
+      }
+
+      setFormError(
+        toErrorMessage(error, 'We could not create your account.'),
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const inputStyle = {
@@ -259,6 +300,10 @@ export default function RegisterScreen() {
               </HelperText>
             )}
 
+            {emailError && (
+              <HelperText type="error">{emailError}</HelperText>
+            )}
+
             {submitted &&
               email.trim() &&
               !isEmailValid && (
@@ -326,7 +371,8 @@ export default function RegisterScreen() {
 
             {submitted && !isPasswordValid && (
               <HelperText type="error">
-                Password must be at least 8 characters.
+                Use at least 10 characters with an upper case letter, a lower
+                case letter and a number.
               </HelperText>
             )}
 
@@ -374,10 +420,18 @@ export default function RegisterScreen() {
               </HelperText>
             )}
 
+            {formError && (
+              <HelperText type="error" visible>
+                {formError}
+              </HelperText>
+            )}
+
             {/* Create Account */}
             <Button
               mode="contained"
               onPress={handleRegister}
+              loading={isSubmitting}
+              disabled={isSubmitting}
               style={[
                 styles.registerButton,
                 {

@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   Image,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
@@ -8,36 +9,56 @@ import {
 import { Button, Card, Chip, Text } from 'react-native-paper';
 import { router } from 'expo-router';
 
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from '@/src/components/screen-states';
+import { useBookings } from '@/src/hooks/queries';
 import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
+import { formatDate, formatMoney } from '@/src/lib/format';
+import { BOOKING_STATUS_LABELS } from '@/src/types/domain';
 
-const bookings = [
-  {
-    id: 'BK-1024',
-    status: 'CONFIRMED',
-    room: 'Deluxe Room',
-    dates: '08 Aug - 10 Aug 2026',
-    guests: 2,
-    total: 264,
-  },
-  {
-    id: 'BK-1025',
-    status: 'PENDING',
-    room: 'Family Suite',
-    dates: '18 Aug - 20 Aug 2026',
-    guests: 4,
-    total: 484,
-  },
-];
-
+/** The signed-in guest's own bookings. The API scopes GET /bookings/ for us. */
 export default function CustomerBookingsScreen() {
   const colors = useAppThemeColors();
   const styles = createStyles(colors);
+
+  const {
+    data: bookings,
+    isPending,
+    isError,
+    error,
+    refetch,
+    isRefetching,
+  } = useBookings();
+
+  if (isPending) {
+    return <LoadingState label="Loading your bookings…" />;
+  }
+
+  if (isError) {
+    return (
+      <ErrorState
+        error={error}
+        onRetry={() => void refetch()}
+        fallback="We could not load your bookings."
+      />
+    );
+  }
 
   return (
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefetching}
+          onRefresh={() => void refetch()}
+          tintColor={colors.primary}
+        />
+      }
     >
       {/* Hotel Branding */}
       <View style={styles.branding}>
@@ -55,59 +76,78 @@ export default function CustomerBookingsScreen() {
       {/* Page Title */}
       <Text style={styles.title}>My Bookings</Text>
 
-      {bookings.map((booking) => (
-        <Card key={booking.id} style={styles.card}>
-          <Card.Content>
-            <View style={styles.topRow}>
-              <View>
-                <Text style={styles.bookingId}>
-                  {booking.id}
-                </Text>
+      {bookings.length === 0 ? (
+        <EmptyState
+          title="No bookings yet"
+          description="Find a room and your reservations will appear here."
+          actionLabel="Browse rooms"
+          onAction={() => router.push('/rooms')}
+        />
+      ) : (
+        bookings.map((booking) => (
+          <Card key={booking.id} style={styles.card}>
+            <Card.Content>
+              <View style={styles.topRow}>
+                <View>
+                  <Text style={styles.bookingId}>
+                    {booking.reference}
+                  </Text>
 
-                <Text style={styles.room}>
-                  {booking.room}
-                </Text>
+                  <Text style={styles.room}>
+                    {booking.room.roomType.name}
+                  </Text>
+                </View>
+
+                <Chip
+                  compact
+                  style={[
+                    styles.statusChip,
+                    booking.status === 'CANCELLED' && {
+                      backgroundColor: colors.errorSurface,
+                    },
+                  ]}
+                  textStyle={[
+                    styles.statusText,
+                    booking.status === 'CANCELLED' && {
+                      color: colors.error,
+                    },
+                  ]}
+                >
+                  {BOOKING_STATUS_LABELS[booking.status]}
+                </Chip>
               </View>
 
-              <Chip
-                compact
-                style={styles.statusChip}
-                textStyle={styles.statusText}
-              >
-                {booking.status}
-              </Chip>
-            </View>
-
-            <Text style={styles.details}>
-              {booking.dates}
-            </Text>
-
-            <Text style={styles.details}>
-              {booking.guests} Guests
-            </Text>
-
-            <View style={styles.bottomRow}>
-              <Text style={styles.total}>
-                ${booking.total}
+              <Text style={styles.details}>
+                {formatDate(booking.checkIn)} –{' '}
+                {formatDate(booking.checkOut)}
               </Text>
 
-              <Button
-                mode="contained"
-                compact
-                buttonColor={colors.secondary}
-                textColor="#000000"
-                onPress={() =>
-                  router.push(
-                    `/bookings/${booking.id.replace('BK-', '')}`,
-                  )
-                }
-              >
-                View
-              </Button>
-            </View>
-          </Card.Content>
-        </Card>
-      ))}
+              <Text style={styles.details}>
+                {booking.guests} {booking.guests === 1 ? 'Guest' : 'Guests'} ·
+                Room {booking.room.roomNumber}
+              </Text>
+
+              <View style={styles.bottomRow}>
+                <Text style={styles.total}>
+                  {formatMoney(booking.totalPrice, booking.currency)}
+                </Text>
+
+                <Button
+                  mode="contained"
+                  compact
+                  buttonColor={colors.secondary}
+                  textColor="#000000"
+                  onPress={() =>
+                    router.push(`/bookings/${booking.id}`)
+                  }
+                >
+                  View
+                </Button>
+              </View>
+            </Card.Content>
+          </Card>
+        ))
+      )}
 
       {/* Back Button */}
       <Button

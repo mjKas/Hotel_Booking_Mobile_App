@@ -1,5 +1,5 @@
-import React from 'react';
-import { router } from 'expo-router';
+import React, { useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
 import {
   Image,
   ScrollView,
@@ -9,30 +9,69 @@ import {
 import {
   Button,
   Card,
+  Dialog,
   Divider,
+  Portal,
   Text,
 } from 'react-native-paper';
 
+import { toErrorMessage } from '@/src/api/apiError';
+import {
+  ErrorState,
+  LoadingState,
+} from '@/src/components/screen-states';
+import { useBooking, useCancelBooking } from '@/src/hooks/queries';
 import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
+import { formatDate, formatMoney } from '@/src/lib/format';
+import { BOOKING_STATUS_LABELS } from '@/src/types/domain';
 
 export default function BookingDetailsScreen() {
   const colors = useAppThemeColors();
   const styles = createStyles(colors);
 
-  const booking = {
-    id: 'BK-1024',
-    status: 'CONFIRMED',
-    room: 'Deluxe Room',
-    roomNumber: '101',
-    checkIn: '08 Aug 2026',
-    checkOut: '10 Aug 2026',
-    guests: 2,
-    roomTotal: 240,
-    taxes: 24,
-    total: 264,
-    guestName: 'John Doe',
-    email: 'john@example.com',
-  };
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const bookingId = Number(id);
+
+  const { data: booking, isPending, isError, error, refetch } = useBooking(
+    Number.isFinite(bookingId) ? bookingId : null,
+  );
+
+  const cancelBooking = useCancelBooking();
+
+  const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+
+  async function handleCancel() {
+    setCancelError(null);
+
+    try {
+      await cancelBooking.mutateAsync(bookingId);
+      setIsConfirmingCancel(false);
+    } catch (err) {
+      setCancelError(
+        toErrorMessage(err, 'We could not cancel this booking.'),
+      );
+    }
+  }
+
+  if (isPending) {
+    return <LoadingState label="Loading this booking…" />;
+  }
+
+  if (isError) {
+    return (
+      <ErrorState
+        error={error}
+        onRetry={() => void refetch()}
+        fallback="We could not load this booking."
+      />
+    );
+  }
+
+  // Cancelling a stay that has already been checked out or cancelled is a 409
+  // server-side, so do not offer it.
+  const canCancel =
+    booking.status !== 'CANCELLED' && booking.status !== 'CHECKED_OUT';
 
   return (
     <ScrollView
@@ -64,21 +103,21 @@ export default function BookingDetailsScreen() {
           <View style={styles.topRow}>
             <View>
               <Text style={styles.bookingId}>
-                {booking.id}
+                {booking.reference}
               </Text>
 
               <Text style={styles.room}>
-                {booking.room}
+                {booking.room.roomType.name}
               </Text>
 
               <Text style={styles.roomNumber}>
-                Room {booking.roomNumber}
+                Room {booking.room.roomNumber}
               </Text>
             </View>
 
             <View style={styles.status}>
               <Text style={styles.statusText}>
-                {booking.status}
+                {BOOKING_STATUS_LABELS[booking.status]}
               </Text>
             </View>
           </View>
@@ -98,7 +137,7 @@ export default function BookingDetailsScreen() {
             </Text>
 
             <Text style={styles.value}>
-              {booking.checkIn}
+              {formatDate(booking.checkIn)}
             </Text>
           </View>
 
@@ -108,7 +147,7 @@ export default function BookingDetailsScreen() {
             </Text>
 
             <Text style={styles.value}>
-              {booking.checkOut}
+              {formatDate(booking.checkOut)}
             </Text>
           </View>
 
@@ -136,7 +175,7 @@ export default function BookingDetailsScreen() {
           </Text>
 
           <Text style={styles.email}>
-            {booking.email}
+            {booking.guestEmail}
           </Text>
         </Card.Content>
       </Card>
@@ -150,11 +189,12 @@ export default function BookingDetailsScreen() {
 
           <View style={styles.row}>
             <Text style={styles.value}>
-              Room
+              Room · {booking.nights}{' '}
+              {booking.nights === 1 ? 'night' : 'nights'}
             </Text>
 
             <Text style={styles.value}>
-              ${booking.roomTotal}
+              {formatMoney(booking.subtotal, booking.currency)}
             </Text>
           </View>
 
@@ -164,7 +204,7 @@ export default function BookingDetailsScreen() {
             </Text>
 
             <Text style={styles.value}>
-              ${booking.taxes}
+              {formatMoney(booking.taxes, booking.currency)}
             </Text>
           </View>
 
@@ -176,21 +216,26 @@ export default function BookingDetailsScreen() {
             </Text>
 
             <Text style={styles.total}>
-              ${booking.total}
+              {formatMoney(booking.totalPrice, booking.currency)}
             </Text>
           </View>
         </Card.Content>
       </Card>
 
       {/* Cancel Booking */}
-      <Button
-        mode="outlined"
-        textColor={colors.error}
-        style={styles.cancelButton}
-        onPress={() => {}}
-      >
-        Cancel Booking
-      </Button>
+      {canCancel ? (
+        <Button
+          mode="outlined"
+          textColor={colors.error}
+          style={styles.cancelButton}
+          onPress={() => {
+            setCancelError(null);
+            setIsConfirmingCancel(true);
+          }}
+        >
+          Cancel Booking
+        </Button>
+      ) : null}
 
       {/* Back */}
       <Button
@@ -200,6 +245,49 @@ export default function BookingDetailsScreen() {
       >
         Back
       </Button>
+
+      <Portal>
+        <Dialog
+          visible={isConfirmingCancel}
+          onDismiss={() => setIsConfirmingCancel(false)}
+          dismissable={!cancelBooking.isPending}
+        >
+          <Dialog.Title>Cancel {booking.reference}?</Dialog.Title>
+
+          <Dialog.Content>
+            <Text style={{ color: colors.textSecondary }}>
+              The room goes back on sale straight away. This cannot be undone —
+              you would need to book again.
+            </Text>
+
+            {cancelError ? (
+              <Text
+                style={{ color: colors.error, marginTop: 12 }}
+              >
+                {cancelError}
+              </Text>
+            ) : null}
+          </Dialog.Content>
+
+          <Dialog.Actions>
+            <Button
+              onPress={() => setIsConfirmingCancel(false)}
+              disabled={cancelBooking.isPending}
+            >
+              Keep it
+            </Button>
+
+            <Button
+              onPress={handleCancel}
+              loading={cancelBooking.isPending}
+              disabled={cancelBooking.isPending}
+              textColor={colors.error}
+            >
+              Cancel booking
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </ScrollView>
   );
 }

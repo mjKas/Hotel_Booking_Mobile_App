@@ -1,84 +1,89 @@
 import { apiClient } from '../api/apiClient';
+import type {
+  BiometricDevice,
+  RegisterPayload,
+  Role,
+  User,
+  UserStatus,
+} from '../types/domain';
+import {
+  mapBiometricDevice,
+  mapUser,
+  type WireBiometricDevice,
+  type WireUser,
+} from './mappers';
 
-export type User = {
-  id: number;
-  email: string;
-  fullName: string;
-  phone: string | null;
-  role: string;
-  status?: string;
-  createdAt?: string;
-};
-
-type BackendUser = {
-  id: number;
-  email: string;
-  full_name: string;
-  phone?: string | null;
-  role: string;
-  status?: string;
-  created_at?: string;
-};
-
-type UpdateProfileData = {
-  fullName?: string;
-  phone?: string | null;
-};
-
-function mapUser(user: BackendUser): User {
-  return {
-    id: user.id,
-    email: user.email,
-    fullName: user.full_name,
-    phone: user.phone ?? null,
-    role: user.role,
-    status: user.status,
-    createdAt: user.created_at,
-  };
+export interface AdminCreateUserPayload extends RegisterPayload {
+  role: Role;
 }
 
+export interface AdminUpdateUserPayload {
+  fullName: string;
+  phone?: string | null;
+  role: Role;
+  status: UserStatus;
+}
+
+/** Administration of other people's accounts. Every call here requires ADMIN. */
 export const userService = {
-  /**
-   * Get the currently authenticated user's profile.
-   */
-  async getProfile(): Promise<User> {
-    const response = await apiClient.get<BackendUser>(
-      '/auth/me',
-    );
-
-    return mapUser(response);
+  async list(): Promise<User[]> {
+    const wire = await apiClient.get<WireUser[]>('/users/');
+    return wire.map(mapUser);
   },
 
-  /**
-   * Update the currently authenticated user's profile.
-   */
-  async updateProfile(
-    data: UpdateProfileData,
+  async get(userId: number): Promise<User> {
+    return mapUser(await apiClient.get<WireUser>(`/users/${userId}`));
+  },
+
+  async create(
+    payload: AdminCreateUserPayload,
   ): Promise<User> {
-    const response = await apiClient.patch<BackendUser>(
-      '/auth/me',
-      {
-        full_name: data.fullName,
-        phone: data.phone,
-      },
+    return mapUser(
+      await apiClient.post<WireUser>('/users/', {
+        full_name: payload.fullName,
+        email: payload.email,
+        phone: payload.phone,
+        password: payload.password,
+        role: payload.role,
+      }),
+    );
+  },
+
+  async update(
+    userId: number,
+    payload: AdminUpdateUserPayload,
+  ): Promise<User> {
+    return mapUser(
+      await apiClient.put<WireUser>(`/users/${userId}`, {
+        full_name: payload.fullName,
+        phone: payload.phone ?? null,
+        role: payload.role,
+        status: payload.status,
+      }),
+    );
+  },
+
+  async remove(userId: number): Promise<void> {
+    await apiClient.delete(`/users/${userId}`);
+  },
+
+  /* -------------------------------------------------------- biometrics */
+
+  async listBiometricDevices(
+    userId: number,
+  ): Promise<BiometricDevice[]> {
+    const wire = await apiClient.get<WireBiometricDevice[]>(
+      `/users/${userId}/biometric`,
     );
 
-    return mapUser(response);
+    return wire.map(mapBiometricDevice);
   },
 
   /**
-   * Change the currently authenticated user's password.
+   * Revokes every device enrolled against this account. Mirrors the reset
+   * action on the web admin console.
    */
-  async changePassword(
-    currentPassword: string,
-    newPassword: string,
-  ): Promise<void> {
-    await apiClient.post(
-      '/auth/change-password',
-      {
-        current_password: currentPassword,
-        new_password: newPassword,
-      },
-    );
+  async resetBiometric(userId: number): Promise<void> {
+    await apiClient.delete(`/users/${userId}/biometric`);
   },
 };

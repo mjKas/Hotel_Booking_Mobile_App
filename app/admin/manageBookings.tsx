@@ -11,82 +11,84 @@ import {
 
 import {
   Button,
+  Chip,
   Divider,
+  HelperText,
+  Searchbar,
   Surface,
   Text,
   TextInput,
 } from 'react-native-paper';
 
-import { router } from 'expo-router';
-
+import { toErrorMessage } from '@/src/api/apiError';
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from '@/src/components/screen-states';
+import {
+  useBookings,
+  useCancelBooking,
+  useUpdateBooking,
+} from '@/src/hooks/queries';
 import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
+import { formatDate, formatMoney } from '@/src/lib/format';
+import {
+  BOOKING_STATUS_LABELS,
+  type Booking,
+  type BookingStatus,
+} from '@/src/types/domain';
 
-type Booking = {
-  id: string;
-  guestName: string;
-  email: string;
-  room: string;
-  checkIn: string;
-  checkOut: string;
-  guests: number;
-  status: 'Confirmed' | 'Pending' | 'Cancelled';
-  total: number;
-};
+const STATUS_FILTERS: (BookingStatus | 'ALL')[] = [
+  'ALL',
+  'PENDING',
+  'CONFIRMED',
+  'CHECKED_IN',
+  'CHECKED_OUT',
+  'CANCELLED',
+];
 
-const initialBookings: Booking[] = [
-  {
-    id: 'B001',
-    guestName: 'John Smith',
-    email: 'john@example.com',
-    room: '101',
-    checkIn: '2026-08-20',
-    checkOut: '2026-08-23',
-    guests: 2,
-    status: 'Confirmed',
-    total: 360,
-  },
-  {
-    id: 'B002',
-    guestName: 'Sarah Williams',
-    email: 'sarah@example.com',
-    room: '201',
-    checkIn: '2026-08-22',
-    checkOut: '2026-08-25',
-    guests: 4,
-    status: 'Pending',
-    total: 660,
-  },
-  {
-    id: 'B003',
-    guestName: 'David Brown',
-    email: 'david@example.com',
-    room: '102',
-    checkIn: '2026-08-18',
-    checkOut: '2026-08-20',
-    guests: 2,
-    status: 'Confirmed',
-    total: 180,
-  },
+const EDITABLE_STATUSES: BookingStatus[] = [
+  'PENDING',
+  'CONFIRMED',
+  'CHECKED_IN',
+  'CHECKED_OUT',
+  'CANCELLED',
 ];
 
 export default function ManageBookings() {
   const colors = useAppThemeColors();
   const styles = createStyles(colors);
 
-  const [bookings, setBookings] =
-    useState<Booking[]>(initialBookings);
+  // 'ALL' switches the server-side status filter off; without it the API only
+  // returns the active statuses.
+  const [statusFilter, setStatusFilter] =
+    useState<BookingStatus | 'ALL'>('ALL');
+  const [search, setSearch] = useState('');
+
+  const {
+    data: bookings,
+    isPending,
+    isError,
+    error,
+    refetch,
+  } = useBookings({
+    status: statusFilter,
+    search: search.trim() || undefined,
+  });
+
+  const updateBooking = useUpdateBooking();
+  const cancelBooking = useCancelBooking();
 
   const [editingBooking, setEditingBooking] =
     useState<Booking | null>(null);
 
-  const [guestName, setGuestName] = useState('');
-  const [email, setEmail] = useState('');
-  const [room, setRoom] = useState('');
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
   const [guests, setGuests] = useState('');
-  const [status, setStatus] =
-    useState<Booking['status']>('Confirmed');
+  const [specialRequests, setSpecialRequests] = useState('');
+  const [status, setStatus] = useState<BookingStatus>('CONFIRMED');
+  const [formError, setFormError] = useState<string | null>(null);
 
   // ==========================================
   // OPEN EDIT
@@ -95,13 +97,12 @@ export default function ManageBookings() {
   const openEdit = (booking: Booking) => {
     setEditingBooking(booking);
 
-    setGuestName(booking.guestName);
-    setEmail(booking.email);
-    setRoom(booking.room);
     setCheckIn(booking.checkIn);
     setCheckOut(booking.checkOut);
     setGuests(String(booking.guests));
+    setSpecialRequests(booking.specialRequests ?? '');
     setStatus(booking.status);
+    setFormError(null);
   };
 
   // ==========================================
@@ -111,79 +112,89 @@ export default function ManageBookings() {
   const closeEdit = () => {
     setEditingBooking(null);
 
-    setGuestName('');
-    setEmail('');
-    setRoom('');
     setCheckIn('');
     setCheckOut('');
     setGuests('');
-    setStatus('Confirmed');
+    setSpecialRequests('');
+    setStatus('CONFIRMED');
+    setFormError(null);
   };
 
   // ==========================================
   // SAVE BOOKING
   // ==========================================
 
-  const saveBooking = () => {
+  const saveBooking = async () => {
+    if (!editingBooking) return;
+
+    setFormError(null);
+
+    const guestCount = Number(guests);
+
     if (
-      !editingBooking ||
-      !guestName.trim() ||
-      !email.trim() ||
-      !room.trim() ||
       !checkIn.trim() ||
       !checkOut.trim() ||
-      !guests.trim()
+      !Number.isFinite(guestCount) ||
+      guestCount < 1
     ) {
       Alert.alert(
         'Missing Information',
-        'Please complete all booking fields.',
+        'Please complete the dates and guest count.',
       );
 
       return;
     }
 
-    setBookings((current) =>
-      current.map((booking) =>
-        booking.id === editingBooking.id
-          ? {
-              ...booking,
-              guestName: guestName.trim(),
-              email: email.trim(),
-              room: room.trim(),
-              checkIn: checkIn.trim(),
-              checkOut: checkOut.trim(),
-              guests: Number(guests),
-              status,
-            }
-          : booking,
-      ),
-    );
+    try {
+      await updateBooking.mutateAsync({
+        bookingId: editingBooking.id,
+        payload: {
+          checkIn: checkIn.trim(),
+          checkOut: checkOut.trim(),
+          guests: guestCount,
+          status,
+          specialRequests: specialRequests.trim() || undefined,
+        },
+      });
 
-    closeEdit();
+      closeEdit();
+    } catch (err) {
+      // Moving dates can collide with another booking (409), and a cancelled
+      // or checked-out stay cannot be edited at all.
+      setFormError(
+        toErrorMessage(err, 'We could not update this booking.'),
+      );
+    }
   };
 
   // ==========================================
-  // DELETE BOOKING
+  // CANCEL BOOKING
   // ==========================================
 
-  const deleteBooking = (id: string) => {
+  const confirmCancel = (booking: Booking) => {
     Alert.alert(
-      'Delete Booking',
-      'Are you sure you want to delete this booking?',
+      'Cancel Booking',
+      `Cancel ${booking.reference} for ${booking.guestName}? ` +
+        'The room goes back on sale immediately.',
       [
         {
-          text: 'Cancel',
+          text: 'Keep it',
           style: 'cancel',
         },
         {
-          text: 'Delete',
+          text: 'Cancel booking',
           style: 'destructive',
           onPress: () => {
-            setBookings((current) =>
-              current.filter(
-                (booking) => booking.id !== id,
-              ),
-            );
+            cancelBooking.mutate(booking.id, {
+              onError: (err) =>
+                Alert.alert(
+                  'Could not cancel',
+                  toErrorMessage(
+                    err,
+                    'We could not cancel this booking.',
+                  ),
+                ),
+            });
           },
         },
       ],
@@ -195,22 +206,37 @@ export default function ManageBookings() {
   // ==========================================
 
   const getStatusStyle = (
-    bookingStatus: Booking['status'],
+    bookingStatus: BookingStatus,
   ) => {
     switch (bookingStatus) {
-      case 'Confirmed':
+      case 'CONFIRMED':
+      case 'CHECKED_IN':
         return styles.confirmedStatus;
 
-      case 'Pending':
+      case 'PENDING':
         return styles.pendingStatus;
 
-      case 'Cancelled':
+      case 'CANCELLED':
         return styles.cancelledStatus;
 
       default:
         return styles.pendingStatus;
     }
   };
+
+  if (isPending) {
+    return <LoadingState label="Loading bookings…" />;
+  }
+
+  if (isError) {
+    return (
+      <ErrorState
+        error={error}
+        onRetry={() => void refetch()}
+        fallback="We could not load the bookings."
+      />
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -276,21 +302,64 @@ export default function ManageBookings() {
 
             <Button
               mode="text"
-              icon="plus"
+              icon="refresh"
               compact
               textColor="#000000"
-              onPress={() => {}}
+              onPress={() => void refetch()}
               style={styles.addButton}
               labelStyle={styles.addButtonLabel}
             >
-              Add
+              Refresh
             </Button>
 
           </View>
 
           {/* =====================================
+              FILTERS
+              ===================================== */}
+
+          <Searchbar
+            placeholder="Search guest, email or reference"
+            value={search}
+            onChangeText={setSearch}
+            style={styles.searchBar}
+          />
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterRow}
+          >
+            {STATUS_FILTERS.map((option) => (
+              <Chip
+                key={option}
+                selected={statusFilter === option}
+                showSelectedCheck={false}
+                onPress={() => setStatusFilter(option)}
+                style={[
+                  styles.filterChip,
+                  statusFilter === option && {
+                    backgroundColor: colors.secondary,
+                  },
+                ]}
+              >
+                {option === 'ALL'
+                  ? 'All'
+                  : BOOKING_STATUS_LABELS[option]}
+              </Chip>
+            ))}
+          </ScrollView>
+
+          {/* =====================================
               BOOKING RECORDS
               ===================================== */}
+
+          {bookings.length === 0 && (
+            <EmptyState
+              title="No bookings match"
+              description="Try a different status or clear the search."
+            />
+          )}
 
           {bookings.map((booking) => (
             <Surface
@@ -305,7 +374,7 @@ export default function ManageBookings() {
 
                 <View>
                   <Text style={styles.bookingId}>
-                    {booking.id}
+                    {booking.reference}
                   </Text>
 
                   <Text style={styles.bookingLabel}>
@@ -322,7 +391,9 @@ export default function ManageBookings() {
                   ]}
                 >
                   <Text style={styles.statusText}>
-                    {booking.status.toUpperCase()}
+                    {BOOKING_STATUS_LABELS[
+                      booking.status
+                    ].toUpperCase()}
                   </Text>
                 </View>
 
@@ -335,7 +406,7 @@ export default function ManageBookings() {
               </Text>
 
               <Text style={styles.email}>
-                {booking.email}
+                {booking.guestEmail}
               </Text>
 
               <Divider style={styles.divider} />
@@ -351,7 +422,7 @@ export default function ManageBookings() {
                   </Text>
 
                   <Text style={styles.detailValue}>
-                    {booking.room}
+                    {booking.room.roomNumber}
                   </Text>
 
                 </View>
@@ -381,7 +452,7 @@ export default function ManageBookings() {
                   </Text>
 
                   <Text style={styles.detailValue}>
-                    {booking.checkIn}
+                    {formatDate(booking.checkIn)}
                   </Text>
 
                 </View>
@@ -393,7 +464,7 @@ export default function ManageBookings() {
                   </Text>
 
                   <Text style={styles.detailValue}>
-                    {booking.checkOut}
+                    {formatDate(booking.checkOut)}
                   </Text>
 
                 </View>
@@ -409,7 +480,10 @@ export default function ManageBookings() {
                 </Text>
 
                 <Text style={styles.totalValue}>
-                  ${booking.total}
+                  {formatMoney(
+                    booking.totalPrice,
+                    booking.currency,
+                  )}
                 </Text>
 
               </View>
@@ -437,8 +511,12 @@ export default function ManageBookings() {
 
                 <Button
                   mode="outlined"
+                  disabled={
+                    booking.status === 'CANCELLED' ||
+                    booking.status === 'CHECKED_OUT'
+                  }
                   onPress={() =>
-                    deleteBooking(booking.id)
+                    confirmCancel(booking)
                   }
                   style={[
                     styles.actionButton,
@@ -449,7 +527,7 @@ export default function ManageBookings() {
                     styles.buttonContent
                   }
                 >
-                  Delete
+                  Cancel
                 </Button>
 
               </View>
@@ -475,52 +553,10 @@ export default function ManageBookings() {
                 Update booking information
               </Text>
 
-              <TextInput
-                mode="outlined"
-                label="Guest Name"
-                value={guestName}
-                onChangeText={setGuestName}
-                style={styles.input}
-                textColor={colors.textPrimary}
-                outlineColor={
-                  colors.textSecondary
-                }
-                activeOutlineColor={
-                  colors.secondary
-                }
-              />
-
-              <TextInput
-                mode="outlined"
-                label="Email"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                style={styles.input}
-                textColor={colors.textPrimary}
-                outlineColor={
-                  colors.textSecondary
-                }
-                activeOutlineColor={
-                  colors.secondary
-                }
-              />
-
-              <TextInput
-                mode="outlined"
-                label="Room"
-                value={room}
-                onChangeText={setRoom}
-                style={styles.input}
-                textColor={colors.textPrimary}
-                outlineColor={
-                  colors.textSecondary
-                }
-                activeOutlineColor={
-                  colors.secondary
-                }
-              />
+              <Text style={styles.editReadOnly}>
+                {editingBooking.reference} · {editingBooking.guestName} ·
+                Room {editingBooking.room.roomNumber}
+              </Text>
 
               <TextInput
                 mode="outlined"
@@ -528,6 +564,7 @@ export default function ManageBookings() {
                 value={checkIn}
                 onChangeText={setCheckIn}
                 placeholder="YYYY-MM-DD"
+                autoCapitalize="none"
                 style={styles.input}
                 textColor={colors.textPrimary}
                 outlineColor={
@@ -544,6 +581,7 @@ export default function ManageBookings() {
                 value={checkOut}
                 onChangeText={setCheckOut}
                 placeholder="YYYY-MM-DD"
+                autoCapitalize="none"
                 style={styles.input}
                 textColor={colors.textPrimary}
                 outlineColor={
@@ -570,19 +608,31 @@ export default function ManageBookings() {
                 }
               />
 
+              <TextInput
+                mode="outlined"
+                label="Special Requests"
+                value={specialRequests}
+                onChangeText={setSpecialRequests}
+                multiline
+                numberOfLines={3}
+                maxLength={500}
+                style={styles.input}
+                textColor={colors.textPrimary}
+                outlineColor={
+                  colors.textSecondary
+                }
+                activeOutlineColor={
+                  colors.secondary
+                }
+              />
+
               <Text style={styles.statusHeading}>
                 Booking Status
               </Text>
 
               <View style={styles.statusButtons}>
 
-                {(
-                  [
-                    'Confirmed',
-                    'Pending',
-                    'Cancelled',
-                  ] as Booking['status'][]
-                ).map((item) => (
+                {EDITABLE_STATUSES.map((item) => (
                   <Button
                     key={item}
                     mode={
@@ -605,11 +655,17 @@ export default function ManageBookings() {
                         : colors.textSecondary
                     }
                   >
-                    {item}
+                    {BOOKING_STATUS_LABELS[item]}
                   </Button>
                 ))}
 
               </View>
+
+              {formError && (
+                <HelperText type="error" visible>
+                  {formError}
+                </HelperText>
+              )}
 
               {/* EDIT ACTIONS */}
 
@@ -629,6 +685,8 @@ export default function ManageBookings() {
                 <Button
                   mode="contained"
                   onPress={saveBooking}
+                  loading={updateBooking.isPending}
+                  disabled={updateBooking.isPending}
                   style={styles.saveButton}
                   buttonColor={
                     colors.secondary
@@ -677,6 +735,29 @@ const createStyles = (
 
     keyboardContainer: {
       flex: 1,
+    },
+
+    searchBar: {
+      marginHorizontal: 16,
+      marginTop: 16,
+      backgroundColor: colors.surface,
+    },
+
+    filterRow: {
+      gap: 8,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+    },
+
+    filterChip: {
+      backgroundColor: colors.surfaceVariant,
+    },
+
+    editReadOnly: {
+      color: colors.textSecondary,
+      fontSize: 14,
+      lineHeight: 20,
+      marginBottom: 14,
     },
 
     scrollContent: {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   FlatList,
   Image,
@@ -13,49 +13,54 @@ import {
 } from 'react-native-paper';
 import { router } from 'expo-router';
 
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from '@/src/components/screen-states';
+import { useRooms } from '@/src/hooks/queries';
 import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
+import { formatMoney } from '@/src/lib/format';
 
-const rooms = [
-  {
-    id: '1',
-    roomNumber: '101',
-    type: 'Deluxe Room',
-    price: 120,
-    capacity: 2,
-    image:
-      'https://images.unsplash.com/photo-1611892440504-42a792e24d32',
-    description: 'Spacious room with modern facilities.',
-  },
-  {
-    id: '2',
-    roomNumber: '102',
-    type: 'Standard Room',
-    price: 90,
-    capacity: 2,
-    image:
-      'https://images.unsplash.com/photo-1590490360182-c33d57733427',
-    description: 'Comfortable room suitable for couples.',
-  },
-  {
-    id: '3',
-    roomNumber: '201',
-    type: 'Family Suite',
-    price: 220,
-    capacity: 4,
-    image:
-      'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b',
-    description: 'Large suite designed for families.',
-  },
-];
+/** Fallback for room types that have no image configured. */
+const PLACEHOLDER_IMAGE =
+  'https://images.unsplash.com/photo-1611892440504-42a792e24d32';
 
 export default function RoomsScreen() {
   const colors = useAppThemeColors();
   const styles = createStyles(colors);
   const [search, setSearch] = useState('');
 
-  const filteredRooms = rooms.filter((room) =>
-    room.type.toLowerCase().includes(search.toLowerCase()),
-  );
+  const { data: rooms, isPending, isError, error, refetch, isRefetching } =
+    useRooms();
+
+  const filteredRooms = useMemo(() => {
+    if (!rooms) return [];
+
+    const term = search.trim().toLowerCase();
+
+    if (!term) return rooms;
+
+    return rooms.filter(
+      (room) =>
+        room.roomType.name.toLowerCase().includes(term) ||
+        room.roomNumber.toLowerCase().includes(term),
+    );
+  }, [rooms, search]);
+
+  if (isPending) {
+    return <LoadingState label="Loading rooms…" />;
+  }
+
+  if (isError) {
+    return (
+      <ErrorState
+        error={error}
+        onRetry={() => void refetch()}
+        fallback="We could not load the rooms."
+      />
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -96,37 +101,47 @@ export default function RoomsScreen() {
       {/* Room List */}
       <FlatList
         data={filteredRooms}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
+        refreshing={isRefetching}
+        onRefresh={() => void refetch()}
+        ListEmptyComponent={
+          <EmptyState
+            title="No rooms match that search"
+            description="Try a different room type or number."
+          />
+        }
         renderItem={({ item }) => (
           <Card style={styles.card}>
 
             <Card.Cover
-              source={{ uri: item.image }}
+              source={{
+                uri: item.roomType.imageUrl || PLACEHOLDER_IMAGE,
+              }}
               style={styles.image}
             />
 
             <Card.Content style={styles.cardContent}>
               <Text style={styles.roomType}>
-                {item.type}
+                {item.roomType.name}
               </Text>
 
               <Text style={styles.roomNumber}>
-                Room {item.roomNumber}
+                Room {item.roomNumber} · Floor {item.floor}
               </Text>
 
               <Text style={styles.description}>
-                {item.description}
+                {item.description || item.roomType.description}
               </Text>
 
               <View style={styles.details}>
                 <Text style={styles.capacity}>
-                  {item.capacity} Guests
+                  {item.roomType.maxOccupancy} Guests
                 </Text>
 
                 <Text style={styles.price}>
-                  ${item.price} / night
+                  {formatMoney(item.nightlyRate)} / night
                 </Text>
               </View>
             </Card.Content>

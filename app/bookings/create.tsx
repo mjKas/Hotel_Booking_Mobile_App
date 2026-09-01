@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Image,
   ScrollView,
@@ -9,44 +9,100 @@ import {
   Button,
   Card,
   Divider,
+  HelperText,
   Text,
+  TextInput,
 } from 'react-native-paper';
 import { Calendar } from 'react-native-calendars';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
+import { toErrorMessage } from '@/src/api/apiError';
+import {
+  ErrorState,
+  LoadingState,
+} from '@/src/components/screen-states';
+import { useCreateBooking, useRoom, useRoomQuote } from '@/src/hooks/queries';
 import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
+import { formatMoney, todayISO } from '@/src/lib/format';
 
 export default function CreateBookingScreen() {
   const colors = useAppThemeColors();
   const styles = createStyles(colors);
 
+  const { roomId: roomIdParam } = useLocalSearchParams<{
+    roomId?: string;
+  }>();
+  const roomId = Number(roomIdParam);
+  const hasRoom = Number.isFinite(roomId) && roomId > 0;
+
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
   const [guests, setGuests] = useState(2);
+  const [specialRequests, setSpecialRequests] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
-  const pricePerNight = 120;
+  const room = useRoom(hasRoom ? roomId : null);
 
-  const numberOfNights = useMemo(() => {
-    if (!checkIn || !checkOut) {
-      return 0;
+  // The server owns the arithmetic: nightly rate, tax and total all come from
+  // the quote, so the figure shown here is the figure that gets booked.
+  const quote = useRoomQuote(
+    hasRoom ? roomId : null,
+    checkIn,
+    checkOut,
+  );
+
+  const createBooking = useCreateBooking();
+
+  const numberOfNights = quote.data?.nights ?? 0;
+
+  const maxGuests = room.data?.roomType.maxOccupancy ?? 8;
+
+  async function handleConfirm() {
+    setError(null);
+
+    try {
+      const booking = await createBooking.mutateAsync({
+        roomId,
+        checkIn,
+        checkOut,
+        guests,
+        specialRequests: specialRequests.trim() || undefined,
+      });
+
+      router.replace(
+        `/bookings/confirmation?bookingId=${booking.id}`,
+      );
+    } catch (err) {
+      // 409 means someone else took the room between the quote and the submit.
+      setError(
+        toErrorMessage(err, 'We could not confirm this booking.'),
+      );
     }
+  }
 
-    const start = new Date(checkIn);
-    const end = new Date(checkOut);
-
-    const difference = end.getTime() - start.getTime();
-
-    return Math.max(
-      0,
-      Math.ceil(
-        difference / (1000 * 60 * 60 * 24),
-      ),
+  if (!hasRoom) {
+    return (
+      <ErrorState
+        error={new Error('Choose a room before booking.')}
+        onRetry={() => router.replace('/rooms')}
+        fallback="Choose a room before booking."
+      />
     );
-  }, [checkIn, checkOut]);
+  }
 
-  const total = numberOfNights * pricePerNight;
-  const taxes = Math.round(total * 0.1);
-  const grandTotal = total + taxes;
+  if (room.isPending) {
+    return <LoadingState label="Loading this room…" />;
+  }
+
+  if (room.isError) {
+    return (
+      <ErrorState
+        error={room.error}
+        onRetry={() => void room.refetch()}
+        fallback="We could not load this room."
+      />
+    );
+  }
 
   return (
     <ScrollView
@@ -76,16 +132,17 @@ export default function CreateBookingScreen() {
       <Card style={styles.roomCard}>
         <Card.Content>
           <Text style={styles.roomName}>
-            Deluxe Room
+            {room.data.roomType.name}
           </Text>
 
           <Text style={styles.roomNumber}>
-            Room 101
+            Room {room.data.roomNumber} · Sleeps{' '}
+            {room.data.roomType.maxOccupancy}
           </Text>
 
           <View style={styles.priceRow}>
             <Text style={styles.price}>
-              ${pricePerNight}
+              {formatMoney(room.data.nightlyRate)}
             </Text>
 
             <Text style={styles.perNight}>
@@ -101,11 +158,7 @@ export default function CreateBookingScreen() {
       </Text>
 
       <Calendar
-        minDate={
-          new Date()
-            .toISOString()
-            .split('T')[0]
-        }
+        minDate={todayISO()}
         onDayPress={(day) => {
           setCheckIn(day.dateString);
 
@@ -206,18 +259,36 @@ export default function CreateBookingScreen() {
         </Button>
 
         <Text style={styles.guestCount}>
-          {guests} Guests
+          {guests} {guests === 1 ? 'Guest' : 'Guests'}
         </Text>
 
         <Button
           mode="outlined"
+          disabled={guests >= maxGuests}
           onPress={() =>
-            setGuests(guests + 1)
+            setGuests(Math.min(maxGuests, guests + 1))
           }
         >
           +
         </Button>
       </View>
+
+      {/* Special requests */}
+      <Text style={styles.sectionTitle}>
+        Special requests
+      </Text>
+
+      <TextInput
+        mode="outlined"
+        placeholder="Anything we should know? (optional)"
+        value={specialRequests}
+        onChangeText={setSpecialRequests}
+        multiline
+        numberOfLines={3}
+        maxLength={500}
+        style={styles.requestsInput}
+        textColor={colors.textPrimary}
+      />
 
       {/* Price Summary */}
       <Card style={styles.summaryCard}>
@@ -226,54 +297,84 @@ export default function CreateBookingScreen() {
             Price Summary
           </Text>
 
-          <View style={styles.summaryRow}>
+          {!checkIn || !checkOut ? (
             <Text style={styles.summaryText}>
-              {numberOfNights} nights × $
-              {pricePerNight}
+              Choose your dates to see the price.
             </Text>
-
+          ) : quote.isPending ? (
+            <Text style={styles.summaryText}>Pricing your stay…</Text>
+          ) : quote.isError ? (
             <Text style={styles.summaryText}>
-              ${total}
+              {toErrorMessage(
+                quote.error,
+                'We could not price this stay.',
+              )}
             </Text>
-          </View>
+          ) : (
+            <>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryText}>
+                  {quote.data.nights}{' '}
+                  {quote.data.nights === 1 ? 'night' : 'nights'} ×{' '}
+                  {formatMoney(
+                    quote.data.nightlyRate,
+                    quote.data.currency,
+                  )}
+                </Text>
 
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryText}>
-              Taxes
-            </Text>
+                <Text style={styles.summaryText}>
+                  {formatMoney(
+                    quote.data.subtotal,
+                    quote.data.currency,
+                  )}
+                </Text>
+              </View>
 
-            <Text style={styles.summaryText}>
-              ${taxes}
-            </Text>
-          </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryText}>
+                  Taxes
+                </Text>
 
-          <Divider style={styles.divider} />
+                <Text style={styles.summaryText}>
+                  {formatMoney(quote.data.taxes, quote.data.currency)}
+                </Text>
+              </View>
 
-          <View style={styles.summaryRow}>
-            <Text style={styles.totalLabel}>
-              Total
-            </Text>
+              <Divider style={styles.divider} />
 
-            <Text style={styles.total}>
-              ${grandTotal}
-            </Text>
-          </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.totalLabel}>
+                  Total
+                </Text>
+
+                <Text style={styles.total}>
+                  {formatMoney(quote.data.total, quote.data.currency)}
+                </Text>
+              </View>
+            </>
+          )}
         </Card.Content>
       </Card>
+
+      {error ? (
+        <HelperText type="error" visible style={styles.errorText}>
+          {error}
+        </HelperText>
+      ) : null}
 
       {/* Confirm Booking */}
       <Button
         mode="contained"
+        loading={createBooking.isPending}
         disabled={
           !checkIn ||
           !checkOut ||
-          numberOfNights <= 0
+          numberOfNights <= 0 ||
+          quote.isPending ||
+          quote.isError ||
+          createBooking.isPending
         }
-        onPress={() =>
-          router.push(
-            '/bookings/confirmation',
-          )
-        }
+        onPress={handleConfirm}
         style={styles.confirmButton}
         contentStyle={styles.buttonContent}
       >
@@ -451,6 +552,16 @@ const createStyles = (
     },
 
     /* Buttons */
+    requestsInput: {
+      marginBottom: 8,
+      backgroundColor: colors.surface,
+    },
+
+    errorText: {
+      fontSize: 14,
+      paddingHorizontal: 0,
+    },
+
     confirmButton: {
       marginHorizontal: 20,
       marginTop: 24,

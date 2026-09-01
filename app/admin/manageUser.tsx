@@ -11,50 +11,40 @@ import {
 } from 'react-native';
 import {
   Button,
+  HelperText,
   Surface,
   Text,
   TextInput,
 } from 'react-native-paper';
 
+import { ApiError, toErrorMessage } from '@/src/api/apiError';
+import {
+  ErrorState,
+  LoadingState,
+} from '@/src/components/screen-states';
+import {
+  useCreateUser,
+  useDeleteUser,
+  useResetUserBiometric,
+  useUpdateUser,
+  useUsers,
+} from '@/src/hooks/queries';
 import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
-
-type User = {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  role: 'Customer' | 'Admin';
-};
-
-const initialUsers: User[] = [
-  {
-    id: 1,
-    name: 'John Smith',
-    email: 'john.smith@email.com',
-    phone: '+94 77 123 4567',
-    role: 'Customer',
-  },
-  {
-    id: 2,
-    name: 'Sarah Wilson',
-    email: 'sarah.wilson@email.com',
-    phone: '+94 71 456 7890',
-    role: 'Customer',
-  },
-  {
-    id: 3,
-    name: 'Admin User',
-    email: 'admin@royalcrest.com',
-    phone: '+94 76 111 2233',
-    role: 'Admin',
-  },
-];
+import { useAuthStore } from '@/src/store/authStore';
+import { ROLE_LABELS, type Role, type User } from '@/src/types/domain';
 
 export default function ManageUser() {
   const colors = useAppThemeColors();
   const styles = createStyles(colors);
 
-  const [users, setUsers] = useState<User[]>(initialUsers);
+  const currentUser = useAuthStore((state) => state.user);
+
+  const { data: users, isPending, isError, error, refetch } = useUsers();
+
+  const createUser = useCreateUser();
+  const updateUser = useUpdateUser();
+  const deleteUser = useDeleteUser();
+  const resetBiometric = useResetUserBiometric();
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -62,79 +52,100 @@ export default function ManageUser() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [role, setRole] =
-    useState<'Customer' | 'Admin'>('Customer');
+  const [role, setRole] = useState<Role>('REGISTERED_USER');
+  const [password, setPassword] = useState('');
 
   const [submitted, setSubmitted] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // A new account needs a password; the API's rule is 10 characters with
+  // mixed case and a digit, so check it here rather than after the round trip.
+  const isPasswordValid =
+    password.length >= 10 &&
+    /[a-z]/.test(password) &&
+    /[A-Z]/.test(password) &&
+    /\d/.test(password);
 
   const openAddUser = () => {
     setEditingUser(null);
     setName('');
     setEmail('');
     setPhone('');
-    setRole('Customer');
+    setRole('REGISTERED_USER');
+    setPassword('');
     setSubmitted(false);
+    setFormError(null);
     setModalVisible(true);
   };
 
   const openEditUser = (user: User) => {
     setEditingUser(user);
-    setName(user.name);
+    setName(user.fullName);
     setEmail(user.email);
-    setPhone(user.phone);
+    setPhone(user.phone ?? '');
     setRole(user.role);
+    setPassword('');
     setSubmitted(false);
+    setFormError(null);
     setModalVisible(true);
   };
 
   const closeModal = () => {
     setModalVisible(false);
     setSubmitted(false);
+    setFormError(null);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSubmitted(true);
+    setFormError(null);
 
     if (!name.trim() || !email.trim()) {
       return;
     }
 
-    if (editingUser) {
-      setUsers((currentUsers) =>
-        currentUsers.map((user) =>
-          user.id === editingUser.id
-            ? {
-                ...user,
-                name: name.trim(),
-                email: email.trim(),
-                phone: phone.trim(),
-                role,
-              }
-            : user,
-        ),
-      );
-    } else {
-      const newUser: User = {
-        id: Date.now(),
-        name: name.trim(),
-        email: email.trim(),
-        phone: phone.trim(),
-        role,
-      };
-
-      setUsers((currentUsers) => [
-        ...currentUsers,
-        newUser,
-      ]);
+    if (!editingUser && !isPasswordValid) {
+      return;
     }
 
-    closeModal();
+    try {
+      if (editingUser) {
+        await updateUser.mutateAsync({
+          userId: editingUser.id,
+          payload: {
+            fullName: name.trim(),
+            phone: phone.trim() || null,
+            role,
+            // Editing here never changes the suspension state; that is a
+            // separate decision made from the web console.
+            status: editingUser.status,
+          },
+        });
+      } else {
+        await createUser.mutateAsync({
+          fullName: name.trim(),
+          email: email.trim(),
+          phone: phone.trim() || undefined,
+          password,
+          role,
+        });
+      }
+
+      closeModal();
+    } catch (err) {
+      // The API refuses self-demotion and duplicate emails with a 409.
+      setFormError(
+        err instanceof ApiError && err.fieldErrors?.email
+          ? err.fieldErrors.email
+          : toErrorMessage(err, 'We could not save this account.'),
+      );
+    }
   };
 
   const handleDelete = (user: User) => {
     Alert.alert(
       'Delete User',
-      `Are you sure you want to delete ${user.name}?`,
+      `Are you sure you want to delete ${user.fullName}?`,
       [
         {
           text: 'Cancel',
@@ -144,16 +155,73 @@ export default function ManageUser() {
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
-            setUsers((currentUsers) =>
-              currentUsers.filter(
-                (item) => item.id !== user.id,
-              ),
-            );
+            deleteUser.mutate(user.id, {
+              onError: (err) =>
+                Alert.alert(
+                  'Could not delete',
+                  // Accounts with booking history cannot be deleted; the
+                  // server says so and suggests suspending instead.
+                  toErrorMessage(
+                    err,
+                    'We could not delete this account.',
+                  ),
+                ),
+            });
           },
         },
       ],
     );
   };
+
+  const handleResetBiometric = (user: User) => {
+    Alert.alert(
+      'Reset biometric sign-in',
+      `Every device enrolled against ${user.email} will lose biometric ` +
+        'access. They can still sign in with their password.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: () => {
+            resetBiometric.mutate(user.id, {
+              onSuccess: () =>
+                Alert.alert(
+                  'Biometric sign-in reset',
+                  `${user.email} will be asked for a password on their next ` +
+                    'sign-in.',
+                ),
+              onError: (err) =>
+                Alert.alert(
+                  'Could not reset',
+                  toErrorMessage(
+                    err,
+                    'We could not reset biometric sign-in.',
+                  ),
+                ),
+            });
+          },
+        },
+      ],
+    );
+  };
+
+  if (isPending) {
+    return <LoadingState label="Loading accounts…" />;
+  }
+
+  if (isError) {
+    return (
+      <ErrorState
+        error={error}
+        onRetry={() => void refetch()}
+        fallback="We could not load the accounts."
+      />
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -205,8 +273,8 @@ export default function ManageUser() {
                 <Text style={styles.userCount}>
                   {users.length}{' '}
                   {users.length === 1
-                    ? 'user'
-                    : 'users'}
+                    ? 'account'
+                    : 'accounts'}
                 </Text>
               </View>
 
@@ -274,7 +342,7 @@ export default function ManageUser() {
                     ]}
                   >
                     <Text style={styles.userIconText}>
-                      {user.name
+                      {user.fullName
                         .charAt(0)
                         .toUpperCase()}
                     </Text>
@@ -289,7 +357,8 @@ export default function ManageUser() {
                         },
                       ]}
                     >
-                      {user.name}
+                      {user.fullName}
+                      {user.id === currentUser?.id ? ' (you)' : ''}
                     </Text>
 
                     <Text
@@ -300,7 +369,8 @@ export default function ManageUser() {
                         },
                       ]}
                     >
-                      {user.role}
+                      {ROLE_LABELS[user.role]}
+                      {user.status === 'SUSPENDED' ? ' · Suspended' : ''}
                     </Text>
                   </View>
                 </View>
@@ -361,6 +431,7 @@ export default function ManageUser() {
 
                   <Button
                     mode="outlined"
+                    disabled={user.id === currentUser?.id}
                     onPress={() =>
                       handleDelete(user)
                     }
@@ -375,6 +446,18 @@ export default function ManageUser() {
                     Delete
                   </Button>
                 </View>
+
+                {/* Clears every phone enrolled for biometric sign-in. */}
+                <Button
+                  mode="text"
+                  icon="fingerprint"
+                  onPress={() => handleResetBiometric(user)}
+                  disabled={resetBiometric.isPending}
+                  textColor={colors.textSecondary}
+                  contentStyle={styles.actionContent}
+                >
+                  Reset biometric
+                </Button>
               </Surface>
             ))}
 
@@ -501,7 +584,7 @@ export default function ManageUser() {
 
                 {submitted && !name.trim() && (
                   <Text style={styles.errorText}>
-                    Please enter the user's name.
+                    Please enter the user&apos;s name.
                   </Text>
                 )}
 
@@ -511,6 +594,7 @@ export default function ManageUser() {
                   label="Email Address"
                   value={email}
                   onChangeText={setEmail}
+                  editable={!editingUser}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -538,8 +622,48 @@ export default function ManageUser() {
 
                 {submitted && !email.trim() && (
                   <Text style={styles.errorText}>
-                    Please enter the user's email.
+                    Please enter the user&apos;s email.
                   </Text>
+                )}
+
+                {/* Password - only when creating an account */}
+                {!editingUser && (
+                  <>
+                    <TextInput
+                      mode="outlined"
+                      label="Temporary Password"
+                      value={password}
+                      onChangeText={setPassword}
+                      secureTextEntry
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      style={[
+                        styles.modalInput,
+                        {
+                          backgroundColor:
+                            colors.surface,
+                        },
+                      ]}
+                      error={submitted && !isPasswordValid}
+                      textColor={colors.textPrimary}
+                      outlineColor={
+                        colors.textFieldOutline
+                      }
+                      activeOutlineColor={
+                        colors.textFieldActiveOutline
+                      }
+                      placeholderTextColor={
+                        colors.textFieldPlaceholder
+                      }
+                    />
+
+                    {submitted && !isPasswordValid && (
+                      <Text style={styles.errorText}>
+                        At least 10 characters with an upper case letter, a
+                        lower case letter and a number.
+                      </Text>
+                    )}
+                  </>
                 )}
 
                 {/* Phone */}
@@ -584,16 +708,16 @@ export default function ManageUser() {
                 <View style={styles.roleContainer}>
                   <Button
                     mode={
-                      role === 'Customer'
+                      role === 'REGISTERED_USER'
                         ? 'contained'
                         : 'outlined'
                     }
                     onPress={() =>
-                      setRole('Customer')
+                      setRole('REGISTERED_USER')
                     }
                     style={styles.roleButton}
                     buttonColor={
-                      role === 'Customer'
+                      role === 'REGISTERED_USER'
                         ? colors.secondary
                         : undefined
                     }
@@ -606,16 +730,16 @@ export default function ManageUser() {
 
                   <Button
                     mode={
-                      role === 'Admin'
+                      role === 'ADMIN'
                         ? 'contained'
                         : 'outlined'
                     }
                     onPress={() =>
-                      setRole('Admin')
+                      setRole('ADMIN')
                     }
                     style={styles.roleButton}
                     buttonColor={
-                      role === 'Admin'
+                      role === 'ADMIN'
                         ? colors.secondary
                         : undefined
                     }
@@ -627,10 +751,22 @@ export default function ManageUser() {
                   </Button>
                 </View>
 
+                {formError && (
+                  <HelperText type="error" visible>
+                    {formError}
+                  </HelperText>
+                )}
+
                 {/* Save */}
                 <Button
                   mode="contained"
                   onPress={handleSave}
+                  loading={
+                    createUser.isPending || updateUser.isPending
+                  }
+                  disabled={
+                    createUser.isPending || updateUser.isPending
+                  }
                   style={styles.saveButton}
                   contentStyle={
                     styles.saveButtonContent

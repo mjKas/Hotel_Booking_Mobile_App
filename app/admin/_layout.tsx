@@ -8,6 +8,8 @@ import {
 import { Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BiometricEnrolmentPrompt } from '@/src/components/biometric-enrolment-prompt';
+import { RequireAdmin } from '@/src/components/route-guards';
 import { ThemeModeSelector } from '@/src/components/theme-mode-selector';
 import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
 
@@ -72,78 +74,90 @@ export default function AdminLayout() {
   const colors = useAppThemeColors();
 
   return (
-    <Drawer
-      drawerContent={(props) => (
-        <CustomDrawerContent {...props} />
-      )}
-      screenOptions={{
-        headerShown: true,
+    <RequireAdmin>
+      <BiometricEnrolmentPrompt />
 
-        drawerStyle: {
-          width: 330,
-          backgroundColor: colors.surface,
-        },
+      <Drawer
+        drawerContent={(props) => (
+          <CustomDrawerContent {...props} />
+        )}
+        screenOptions={{
+          headerShown: true,
 
-        drawerActiveTintColor: colors.primary,
-        drawerInactiveTintColor: colors.textPrimary,
+          drawerStyle: {
+            width: 330,
+            backgroundColor: colors.surface,
+          },
 
-        drawerActiveBackgroundColor:
-          colors.surfaceVariant,
+          drawerActiveTintColor: colors.primary,
+          drawerInactiveTintColor: colors.textPrimary,
 
-        drawerLabelStyle: {
-          fontSize: 17,
-          fontWeight: '500',
-        },
+          drawerActiveBackgroundColor:
+            colors.surfaceVariant,
 
-        drawerItemStyle: {
-          borderRadius: 12,
-          marginHorizontal: 8,
-          marginVertical: 3,
-        },
+          drawerLabelStyle: {
+            fontSize: 17,
+            fontWeight: '500',
+          },
 
-        headerStyle: {
-          backgroundColor: colors.surface,
-        },
+          drawerItemStyle: {
+            borderRadius: 12,
+            marginHorizontal: 8,
+            marginVertical: 3,
+          },
 
-        headerTintColor: colors.textPrimary,
+          headerStyle: {
+            backgroundColor: colors.surface,
+          },
 
-        headerTitleStyle: {
-          fontWeight: '700',
-        },
-      }}
-    >
-      <Drawer.Screen
-        name="index"
-        options={{
-          title: 'Dashboard',
-          drawerLabel: 'Dashboard',
+          headerTintColor: colors.textPrimary,
+
+          headerTitleStyle: {
+            fontWeight: '700',
+          },
         }}
-      />
+      >
+        <Drawer.Screen
+          name="index"
+          options={{
+            title: 'Dashboard',
+            drawerLabel: 'Dashboard',
+          }}
+        />
 
-      <Drawer.Screen
-        name="manageRooms"
-        options={{
-          title: 'Manage Rooms',
-          drawerLabel: 'Manage Rooms',
-        }}
-      />
+        <Drawer.Screen
+          name="manageRooms"
+          options={{
+            title: 'Manage Rooms',
+            drawerLabel: 'Manage Rooms',
+          }}
+        />
 
-      <Drawer.Screen
-        name="manageBookings"
-        options={{
-          title: 'Manage Bookings',
-          drawerLabel: 'Manage Bookings',
-        }}
-      />
+        <Drawer.Screen
+          name="manageBookings"
+          options={{
+            title: 'Manage Bookings',
+            drawerLabel: 'Manage Bookings',
+          }}
+        />
 
-      <Drawer.Screen
-        name="manageUser"
-        options={{
-          title: 'Manage Users',
-          drawerLabel: 'Manage Users',
-        }}
-      />
-    </Drawer>
+        <Drawer.Screen
+          name="manageUser"
+          options={{
+            title: 'Manage Users',
+            drawerLabel: 'Manage Users',
+          }}
+        />
+
+        <Drawer.Screen
+          name="security"
+          options={{
+            title: 'Security',
+            drawerLabel: 'Security',
+          }}
+        />
+      </Drawer>
+    </RequireAdmin>
   );
 }
 

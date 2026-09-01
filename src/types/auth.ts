@@ -1,18 +1,16 @@
-export type UserRole = 'ADMIN' | 'CUSTOMER';
+/**
+ * Re-exported from the domain model so older imports keep working.
+ *
+ * Note the role names come from the backend: `REGISTERED_USER`, not `CUSTOMER`.
+ */
+export type {
+  AuthSession,
+  LoginPayload,
+  RegisterPayload,
+  Role,
+  Role as UserRole,
+  User,
+  UserStatus,
+} from './domain';
 
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-export interface User {
-  id: number | string;
-  name: string;
-  email: string;
-  role: UserRole;
-}
-
-export interface LoginResponse {
-  token: string;
-  user: User;
-}
+export { ROLE_LABELS } from './domain';

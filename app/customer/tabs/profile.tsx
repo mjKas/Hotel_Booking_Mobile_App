@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Image,
   ScrollView,
@@ -9,17 +9,88 @@ import {
   Avatar,
   Button,
   Card,
+  Dialog,
   Divider,
+  HelperText,
   List,
+  Portal,
   Text,
+  TextInput,
 } from 'react-native-paper';
 import { router } from 'expo-router';
 
+import { toErrorMessage } from '@/src/api/apiError';
+import { LoadingState } from '@/src/components/screen-states';
 import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
+import { authService } from '@/src/services/authService';
+import { useAuthStore } from '@/src/store/authStore';
+
+function initials(fullName: string): string {
+  return fullName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('');
+}
 
 export default function CustomerProfileScreen() {
   const colors = useAppThemeColors();
   const styles = createStyles(colors);
+
+  const user = useAuthStore((state) => state.user);
+  const setUser = useAuthStore((state) => state.setUser);
+  const signOut = useAuthStore((state) => state.signOut);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // The guard above this screen means a null user only happens mid sign-out.
+  if (!user) {
+    return <LoadingState label="Loading your profile…" />;
+  }
+
+  function openEdit() {
+    if (!user) return;
+    setError(null);
+    setFullName(user.fullName);
+    setPhone(user.phone ?? '');
+    setIsEditing(true);
+  }
+
+  async function handleSave() {
+    if (fullName.trim().length < 2) {
+      setError('Enter your full name.');
+      return;
+    }
+
+    setError(null);
+    setIsSaving(true);
+
+    try {
+      setUser(
+        await authService.updateProfile({
+          fullName: fullName.trim(),
+          phone: phone.trim() || null,
+        }),
+      );
+
+      setIsEditing(false);
+    } catch (err) {
+      setError(toErrorMessage(err, 'We could not save your details.'));
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleSignOut() {
+    // Revokes the refresh token server-side before clearing local state.
+    await signOut();
+    router.replace('/auth/login');
+  }
 
   return (
     <ScrollView
@@ -44,17 +115,17 @@ export default function CustomerProfileScreen() {
       <View style={styles.profileHeader}>
         <Avatar.Text
           size={82}
-          label="JD"
+          label={initials(user.fullName)}
           color={colors.headerText}
           style={styles.avatar}
         />
 
         <Text style={styles.name}>
-          John Doe
+          {user.fullName}
         </Text>
 
         <Text style={styles.email}>
-          john@example.com
+          {user.email}
         </Text>
       </View>
 
@@ -67,7 +138,7 @@ export default function CustomerProfileScreen() {
 
           <List.Item
             title="Full Name"
-            description="John Doe"
+            description={user.fullName}
             titleStyle={styles.listTitle}
             descriptionStyle={styles.listDescription}
             left={(props) => (
@@ -83,7 +154,7 @@ export default function CustomerProfileScreen() {
 
           <List.Item
             title="Email"
-            description="john@example.com"
+            description={user.email}
             titleStyle={styles.listTitle}
             descriptionStyle={styles.listDescription}
             left={(props) => (
@@ -99,7 +170,7 @@ export default function CustomerProfileScreen() {
 
           <List.Item
             title="Phone"
-            description="+94 77 123 4567"
+            description={user.phone ?? 'Not provided'}
             titleStyle={styles.listTitle}
             descriptionStyle={styles.listDescription}
             left={(props) => (
@@ -111,6 +182,12 @@ export default function CustomerProfileScreen() {
             )}
           />
         </Card.Content>
+
+        <Card.Actions>
+          <Button onPress={openEdit} textColor={colors.primary}>
+            Edit details
+          </Button>
+        </Card.Actions>
       </Card>
 
       {/* Account Options */}
@@ -135,7 +212,7 @@ export default function CustomerProfileScreen() {
             />
           )}
           onPress={() =>
-            router.push('/bookings/1024')
+            router.push('/customer/tabs/booking')
           }
         />
       </Card>
@@ -146,12 +223,62 @@ export default function CustomerProfileScreen() {
         icon="logout"
         textColor={colors.error}
         style={styles.logout}
-        onPress={() => {
-          router.replace('/auth/login');
-        }}
+        onPress={handleSignOut}
       >
         Logout
       </Button>
+
+      <Portal>
+        <Dialog
+          visible={isEditing}
+          onDismiss={() => setIsEditing(false)}
+          dismissable={!isSaving}
+        >
+          <Dialog.Title>Edit your details</Dialog.Title>
+
+          <Dialog.Content>
+            <TextInput
+              label="Full name"
+              mode="outlined"
+              value={fullName}
+              onChangeText={setFullName}
+              style={styles.dialogInput}
+            />
+
+            <TextInput
+              label="Phone number"
+              mode="outlined"
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+              style={styles.dialogInput}
+            />
+
+            {error ? (
+              <HelperText type="error" visible>
+                {error}
+              </HelperText>
+            ) : null}
+          </Dialog.Content>
+
+          <Dialog.Actions>
+            <Button
+              onPress={() => setIsEditing(false)}
+              disabled={isSaving}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              onPress={handleSave}
+              loading={isSaving}
+              disabled={isSaving}
+            >
+              Save
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </ScrollView>
   );
 }
@@ -235,6 +362,11 @@ const createStyles = (
 
     listDescription: {
       color: colors.textSecondary,
+    },
+
+    dialogInput: {
+      marginBottom: 10,
+      backgroundColor: colors.surface,
     },
 
     logout: {

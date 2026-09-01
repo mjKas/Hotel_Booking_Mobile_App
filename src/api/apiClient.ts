@@ -1,28 +1,52 @@
 import { config } from '../lib/config';
-import { ApiError } from './apiError';
+import { ApiError, extractMessage, parseFieldErrors } from './apiError';
 import { tokenStore } from './tokenStore';
 
 type RequestOptions = {
   body?: unknown;
+  /** Skip the Authorization header, e.g. for login and register. */
   anonymous?: boolean;
+  query?: Record<string, string | number | boolean | null | undefined>;
 };
 
-let refreshing = false;
+/**
+ * Shared across concurrent callers so a burst of 401s triggers exactly one
+ * refresh. Holding the promise (rather than a boolean flag) means the second
+ * caller waits for the answer instead of giving up.
+ */
+let refreshInFlight: Promise<boolean> | null = null;
 
-async function refreshAccessToken(): Promise<boolean> {
-  if (refreshing) {
+function buildUrl(
+  path: string,
+  query: RequestOptions['query'],
+): string {
+  const url = `${config.apiBaseUrl}${path}`;
+
+  if (!query) {
+    return url;
+  }
+
+  const params = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== null && value !== '') {
+      params.append(key, String(value));
+    }
+  }
+
+  const search = params.toString();
+
+  return search ? `${url}?${search}` : url;
+}
+
+async function performRefresh(): Promise<boolean> {
+  const refreshToken = await tokenStore.getRefreshToken();
+
+  if (!refreshToken) {
     return false;
   }
 
-  refreshing = true;
-
   try {
-    const refreshToken = await tokenStore.getRefreshToken();
-
-    if (!refreshToken) {
-      return false;
-    }
-
     const response = await fetch(
       `${config.apiBaseUrl}/auth/refresh`,
       {
@@ -38,6 +62,7 @@ async function refreshAccessToken(): Promise<boolean> {
     );
 
     if (!response.ok) {
+      // The refresh token is spent or revoked; the session is over.
       await tokenStore.clear();
       return false;
     }
@@ -51,11 +76,19 @@ async function refreshAccessToken(): Promise<boolean> {
 
     return true;
   } catch {
-    await tokenStore.clear();
+    // A network blip should not sign the user out - only a rejection does.
     return false;
-  } finally {
-    refreshing = false;
   }
+}
+
+function refreshAccessToken(): Promise<boolean> {
+  if (!refreshInFlight) {
+    refreshInFlight = performRefresh().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+
+  return refreshInFlight;
 }
 
 async function request<T>(
@@ -64,7 +97,7 @@ async function request<T>(
   options: RequestOptions = {},
   retry = false,
 ): Promise<T> {
-  const { body, anonymous = false } = options;
+  const { body, anonymous = false, query } = options;
 
   const headers: Record<string, string> = {
     Accept: 'application/json',
@@ -86,7 +119,7 @@ async function request<T>(
 
   try {
     response = await fetch(
-      `${config.apiBaseUrl}${path}`,
+      buildUrl(path, query),
       {
         method,
         headers,
@@ -99,11 +132,12 @@ async function request<T>(
   } catch {
     throw new ApiError(
       0,
-      'Unable to connect to the server.',
+      'Unable to reach the server. Check your connection and try again.',
     );
   }
 
-  // Access token expired.
+  // The access token lives for 15 minutes, so this path is common. Refresh
+  // once and replay the original request before surfacing an error.
   if (
     response.status === 401 &&
     !anonymous &&
@@ -127,7 +161,7 @@ async function request<T>(
 
   const text = await response.text();
 
-  let data: any = null;
+  let data: unknown = null;
 
   if (text) {
     try {
@@ -138,16 +172,10 @@ async function request<T>(
   }
 
   if (!response.ok) {
-    const message =
-      typeof data === 'string'
-        ? data
-        : data?.detail ||
-          data?.message ||
-          'The request failed.';
-
     throw new ApiError(
       response.status,
-      message,
+      extractMessage(data, 'The request failed.'),
+      parseFieldErrors(data),
     );
   }
 

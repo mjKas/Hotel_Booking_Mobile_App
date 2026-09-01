@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   FlatList,
   Image,
   Keyboard,
@@ -17,54 +18,37 @@ import {
   Button,
   Card,
   Chip,
+  HelperText,
   Text,
   TextInput,
 } from 'react-native-paper';
 
+import { toErrorMessage } from '@/src/api/apiError';
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from '@/src/components/screen-states';
+import {
+  useCreateRoom,
+  useDeleteRoom,
+  useRoomTypes,
+  useRooms,
+  useUpdateRoom,
+} from '@/src/hooks/queries';
 import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
+import { formatMoney } from '@/src/lib/format';
+import {
+  ROOM_STATUS_LABELS,
+  type Room,
+  type RoomStatus,
+} from '@/src/types/domain';
 
-interface Room {
-  id: string;
-  number: string;
-  type: string;
-  price: number;
-  capacity: number;
-  status: 'AVAILABLE' | 'OCCUPIED' | 'MAINTENANCE';
-}
-
-const initialRooms: Room[] = [
-  {
-    id: '1',
-    number: '101',
-    type: 'Deluxe Room',
-    price: 120,
-    capacity: 2,
-    status: 'AVAILABLE',
-  },
-  {
-    id: '2',
-    number: '102',
-    type: 'Standard Room',
-    price: 90,
-    capacity: 2,
-    status: 'OCCUPIED',
-  },
-  {
-    id: '3',
-    number: '201',
-    type: 'Family Suite',
-    price: 220,
-    capacity: 4,
-    status: 'AVAILABLE',
-  },
-  {
-    id: '4',
-    number: '301',
-    type: 'Premium Suite',
-    price: 280,
-    capacity: 4,
-    status: 'MAINTENANCE',
-  },
+const STATUSES: RoomStatus[] = [
+  'AVAILABLE',
+  'OCCUPIED',
+  'MAINTENANCE',
+  'OUT_OF_SERVICE',
 ];
 
 export default function ManageRoomsScreen() {
@@ -73,10 +57,18 @@ export default function ManageRoomsScreen() {
 
   const { height: screenHeight } = useWindowDimensions();
 
-  const [rooms, setRooms] = useState(initialRooms);
+  const { data: rooms, isPending, isError, error, refetch } = useRooms();
+
+  // A room must belong to an existing room type, so the picker below is
+  // driven by what the hotel actually has configured.
+  const roomTypes = useRoomTypes();
+
+  const createRoom = useCreateRoom();
+  const updateRoom = useUpdateRoom();
+  const deleteRoom = useDeleteRoom();
 
   const [editingRoomId, setEditingRoomId] =
-    useState<string | null>(null);
+    useState<number | null>(null);
 
   const [dialogVisible, setDialogVisible] =
     useState(false);
@@ -85,9 +77,12 @@ export default function ManageRoomsScreen() {
     useState(false);
 
   const [roomNumber, setRoomNumber] = useState('');
-  const [roomType, setRoomType] = useState('');
+  const [roomTypeId, setRoomTypeId] = useState<number | null>(null);
+  const [floor, setFloor] = useState('');
   const [price, setPrice] = useState('');
-  const [capacity, setCapacity] = useState('');
+  const [status, setStatus] = useState<RoomStatus>('AVAILABLE');
+  const [description, setDescription] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     const showListener = Keyboard.addListener(
@@ -119,9 +114,12 @@ export default function ManageRoomsScreen() {
 
     setEditingRoomId(null);
     setRoomNumber('');
-    setRoomType('');
+    setRoomTypeId(roomTypes.data?.[0]?.id ?? null);
+    setFloor('');
     setPrice('');
-    setCapacity('');
+    setStatus('AVAILABLE');
+    setDescription('');
+    setFormError(null);
 
     setDialogVisible(true);
   };
@@ -130,10 +128,13 @@ export default function ManageRoomsScreen() {
     Keyboard.dismiss();
 
     setEditingRoomId(room.id);
-    setRoomNumber(room.number);
-    setRoomType(room.type);
-    setPrice(String(room.price));
-    setCapacity(String(room.capacity));
+    setRoomNumber(room.roomNumber);
+    setRoomTypeId(room.roomTypeId);
+    setFloor(String(room.floor));
+    setPrice(String(room.nightlyRate));
+    setStatus(room.status);
+    setDescription(room.description);
+    setFormError(null);
 
     setDialogVisible(true);
   };
@@ -141,51 +142,107 @@ export default function ManageRoomsScreen() {
   const closeDialog = () => {
     Keyboard.dismiss();
     setDialogVisible(false);
+    setFormError(null);
   };
 
-  const saveRoom = () => {
+  const saveRoom = async () => {
     Keyboard.dismiss();
+    setFormError(null);
 
-    if (editingRoomId) {
-      setRooms((current) =>
-        current.map((room) =>
-          room.id === editingRoomId
-            ? {
-                ...room,
-                number: roomNumber,
-                type: roomType,
-                price: Number(price),
-                capacity: Number(capacity),
-              }
-            : room,
-        ),
-      );
-    } else {
-      setRooms((current) => [
-        ...current,
-        {
-          id: Date.now().toString(),
-          number: roomNumber,
-          type: roomType,
-          price: Number(price),
-          capacity: Number(capacity),
-          status: 'AVAILABLE',
-        },
-      ]);
+    const nightlyRate = Number(price);
+    const floorNumber = Number(floor);
+
+    if (!roomNumber.trim()) {
+      setFormError('Enter a room number.');
+      return;
     }
 
-    setDialogVisible(false);
+    if (roomTypeId === null) {
+      setFormError('Choose a room type.');
+      return;
+    }
+
+    if (!Number.isFinite(nightlyRate) || nightlyRate <= 0) {
+      setFormError('Enter a nightly rate above zero.');
+      return;
+    }
+
+    if (!Number.isFinite(floorNumber) || floorNumber < 0) {
+      setFormError('Enter a floor number.');
+      return;
+    }
+
+    const payload = {
+      roomNumber: roomNumber.trim(),
+      floor: floorNumber,
+      status,
+      roomTypeId,
+      nightlyRate,
+      description: description.trim(),
+    };
+
+    try {
+      if (editingRoomId !== null) {
+        await updateRoom.mutateAsync({
+          roomId: editingRoomId,
+          payload,
+        });
+      } else {
+        await createRoom.mutateAsync(payload);
+      }
+
+      setDialogVisible(false);
+    } catch (err) {
+      // A duplicate room number comes back as a 409.
+      setFormError(
+        toErrorMessage(err, 'We could not save this room.'),
+      );
+    }
   };
 
-  const deleteRoom = (id: string) => {
-    setRooms((current) =>
-      current.filter((room) => room.id !== id),
+  const confirmDelete = (room: Room) => {
+    Alert.alert(
+      'Delete room',
+      `Delete room ${room.roomNumber}? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () =>
+            deleteRoom.mutate(room.id, {
+              onError: (err) =>
+                Alert.alert(
+                  'Could not delete',
+                  // Rooms with booking history are refused with a 409.
+                  toErrorMessage(
+                    err,
+                    'We could not delete this room.',
+                  ),
+                ),
+            }),
+        },
+      ],
     );
   };
 
   const dialogMaxHeight = keyboardVisible
     ? screenHeight * 0.48
     : screenHeight * 0.70;
+
+  if (isPending) {
+    return <LoadingState label="Loading rooms…" />;
+  }
+
+  if (isError) {
+    return (
+      <ErrorState
+        error={error}
+        onRetry={() => void refetch()}
+        fallback="We could not load the rooms."
+      />
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -235,7 +292,17 @@ export default function ManageRoomsScreen() {
 
       <FlatList
         data={rooms}
-        keyExtractor={(item) => item.id}
+        refreshing={false}
+        onRefresh={() => void refetch()}
+        ListEmptyComponent={
+          <EmptyState
+            title="No rooms yet"
+            description="Add the first room to get started."
+            actionLabel="Add a room"
+            onAction={openAddRoom}
+          />
+        }
+        keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -247,7 +314,7 @@ export default function ManageRoomsScreen() {
 
                 <View style={styles.roomNumber}>
                   <Text style={styles.number}>
-                    {item.number}
+                    {item.roomNumber}
                   </Text>
 
                   <Text style={styles.roomLabel}>
@@ -266,13 +333,13 @@ export default function ManageRoomsScreen() {
                     styles,
                   )}
                 >
-                  {item.status}
+                  {ROOM_STATUS_LABELS[item.status]}
                 </Chip>
 
               </View>
 
               <Text style={styles.roomType}>
-                {item.type}
+                {item.roomType.name}
               </Text>
 
               <View style={styles.details}>
@@ -281,11 +348,12 @@ export default function ManageRoomsScreen() {
                     color: colors.textPrimary,
                   }}
                 >
-                  {item.capacity} Guests
+                  {item.roomType.maxOccupancy} Guests · Floor{' '}
+                  {item.floor}
                 </Text>
 
                 <Text style={styles.price}>
-                  ${item.price} / night
+                  {formatMoney(item.nightlyRate)} / night
                 </Text>
               </View>
 
@@ -309,7 +377,7 @@ export default function ManageRoomsScreen() {
                   mode="outlined"
                   textColor={colors.error}
                   onPress={() =>
-                    deleteRoom(item.id)
+                    confirmDelete(item)
                   }
                   style={[
                     styles.actionButton,
@@ -360,7 +428,7 @@ export default function ManageRoomsScreen() {
 
             <View style={styles.formHeader}>
               <Text style={styles.formTitle}>
-                {editingRoomId
+                {editingRoomId !== null
                   ? 'Edit Room'
                   : 'Add New Room'}
               </Text>
@@ -379,16 +447,37 @@ export default function ManageRoomsScreen() {
                 mode="outlined"
                 value={roomNumber}
                 onChangeText={setRoomNumber}
-                keyboardType="number-pad"
                 returnKeyType="next"
                 style={styles.dialogInput}
               />
 
+              <Text style={styles.fieldLabel}>Room Type</Text>
+
+              <View style={styles.chipRow}>
+                {(roomTypes.data ?? []).map((type) => (
+                  <Chip
+                    key={type.id}
+                    selected={roomTypeId === type.id}
+                    showSelectedCheck={false}
+                    onPress={() => setRoomTypeId(type.id)}
+                    style={[
+                      styles.pickerChip,
+                      roomTypeId === type.id && {
+                        backgroundColor: colors.secondary,
+                      },
+                    ]}
+                  >
+                    {type.name}
+                  </Chip>
+                ))}
+              </View>
+
               <TextInput
-                label="Room Type"
+                label="Floor"
                 mode="outlined"
-                value={roomType}
-                onChangeText={setRoomType}
+                value={floor}
+                onChangeText={setFloor}
+                keyboardType="number-pad"
                 returnKeyType="next"
                 style={styles.dialogInput}
               />
@@ -403,16 +492,45 @@ export default function ManageRoomsScreen() {
                 style={styles.dialogInput}
               />
 
+              <Text style={styles.fieldLabel}>Status</Text>
+
+              <View style={styles.chipRow}>
+                {STATUSES.map((option) => (
+                  <Chip
+                    key={option}
+                    selected={status === option}
+                    showSelectedCheck={false}
+                    onPress={() => setStatus(option)}
+                    style={[
+                      styles.pickerChip,
+                      status === option && {
+                        backgroundColor: colors.secondary,
+                      },
+                    ]}
+                  >
+                    {ROOM_STATUS_LABELS[option]}
+                  </Chip>
+                ))}
+              </View>
+
               <TextInput
-                label="Capacity"
+                label="Description"
                 mode="outlined"
-                value={capacity}
-                onChangeText={setCapacity}
-                keyboardType="number-pad"
+                value={description}
+                onChangeText={setDescription}
+                multiline
+                numberOfLines={3}
+                maxLength={600}
                 returnKeyType="done"
                 onSubmitEditing={Keyboard.dismiss}
                 style={styles.dialogInput}
               />
+
+              {formError && (
+                <HelperText type="error" visible>
+                  {formError}
+                </HelperText>
+              )}
 
             </ScrollView>
 
@@ -430,10 +548,12 @@ export default function ManageRoomsScreen() {
               <Button
                 mode="text"
                 onPress={saveRoom}
+                loading={createRoom.isPending || updateRoom.isPending}
+                disabled={createRoom.isPending || updateRoom.isPending}
                 textColor={colors.secondary}
                 style={styles.formActionButton}
               >
-                {editingRoomId
+                {editingRoomId !== null
                   ? 'Save Room'
                   : 'Add Room'}
               </Button>
@@ -461,6 +581,7 @@ function getStatusStyle(
       return styles.occupied;
 
     default:
+      // MAINTENANCE and OUT_OF_SERVICE both read as unavailable.
       return styles.maintenance;
   }
 }
@@ -688,6 +809,27 @@ const createStyles = (
       paddingHorizontal: 20,
       paddingTop: 8,
       paddingBottom: 8,
+    },
+
+    fieldLabel: {
+      color: colors.textPrimary,
+      fontSize: 13,
+      fontWeight: '700',
+      letterSpacing: 0.6,
+      textTransform: 'uppercase',
+      marginBottom: 8,
+      marginTop: 4,
+    },
+
+    chipRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginBottom: 14,
+    },
+
+    pickerChip: {
+      backgroundColor: colors.surfaceVariant,
     },
 
     dialogInput: {
