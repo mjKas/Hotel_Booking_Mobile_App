@@ -1,10 +1,10 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Drawer } from 'expo-router/drawer';
 import {
-  DrawerContentComponentProps,
+  Drawer,
+  DrawerContentScrollView,
   DrawerItemList,
-} from '@react-navigation/drawer';
+} from 'expo-router/drawer';
 import { Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -13,9 +13,7 @@ import { RequireAdmin } from '@/src/components/route-guards';
 import { ThemeModeSelector } from '@/src/components/theme-mode-selector';
 import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
 
-function CustomDrawerContent(
-  props: DrawerContentComponentProps,
-) {
+function CustomDrawerContent(props: any) {
   const colors = useAppThemeColors();
   const insets = useSafeAreaInsets();
 
@@ -25,12 +23,20 @@ function CustomDrawerContent(
         styles.container,
         {
           backgroundColor: colors.surface,
-          paddingTop: insets.top,
-          paddingBottom: insets.bottom,
         },
       ]}
     >
-      <View style={styles.navigation}>
+      <DrawerContentScrollView
+        {...props}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: insets.top + 16,
+            paddingBottom: 16,
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
         <Text
           style={[
             styles.sectionTitle,
@@ -43,13 +49,15 @@ function CustomDrawerContent(
         </Text>
 
         <DrawerItemList {...props} />
-      </View>
+      </DrawerContentScrollView>
 
       <View
         style={[
           styles.appearanceSection,
           {
+            backgroundColor: colors.surface,
             borderTopColor: colors.surfaceVariant,
+            paddingBottom: Math.max(insets.bottom, 20),
           },
         ]}
       >
@@ -92,8 +100,7 @@ export default function AdminLayout() {
           drawerActiveTintColor: colors.primary,
           drawerInactiveTintColor: colors.textPrimary,
 
-          drawerActiveBackgroundColor:
-            colors.surfaceVariant,
+          drawerActiveBackgroundColor: colors.surfaceVariant,
 
           drawerLabelStyle: {
             fontSize: 17,
@@ -114,6 +121,10 @@ export default function AdminLayout() {
 
           headerTitleStyle: {
             fontWeight: '700',
+          },
+
+          sceneStyle: {
+            backgroundColor: colors.background,
           },
         }}
       >
@@ -166,9 +177,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  navigation: {
-    flex: 1,
-    paddingTop: 24,
+  scrollContent: {
+    flexGrow: 1,
   },
 
   sectionTitle: {
@@ -182,7 +192,6 @@ const styles = StyleSheet.create({
   appearanceSection: {
     paddingHorizontal: 16,
     paddingTop: 20,
-    paddingBottom: 20,
     borderTopWidth: 1,
   },
 });
