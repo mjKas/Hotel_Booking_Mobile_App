@@ -769,7 +769,7 @@ const createStyles = (
     },
 
     modalBackdrop: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       backgroundColor: 'rgba(0, 0, 0, 0.45)',
     },
 

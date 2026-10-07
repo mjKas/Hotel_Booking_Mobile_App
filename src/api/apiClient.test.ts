@@ -61,7 +61,7 @@ function loadApiClient() {
 
 beforeEach(() => {
   fetchMock = jest.fn();
-  global.fetch = fetchMock as unknown as typeof fetch;
+  globalThis.fetch = fetchMock as unknown as typeof fetch;
   tokens.getAccessToken.mockReturnValue(null);
   tokens.getRefreshToken.mockResolvedValue(null);
   tokens.setTokens.mockResolvedValue(undefined);

@@ -2,9 +2,9 @@ name: Unit and integration tests
 
 on:
   pull_request:
-    branches: [main]
+    branches: [master]
   push:
-    branches: [main]
+    branches: [master]
 
 concurrency:
   group: unit-tests-${{ github.ref }}
