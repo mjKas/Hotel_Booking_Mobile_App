@@ -62,7 +62,7 @@ export default function RoomDetailsScreen() {
       {/* Hotel Branding */}
       <View style={styles.branding}>
         <Image
-          source={require('../../assets/images/royal-crest-logo.jpg')}
+          source={require('../../../assets/images/royal-crest-logo.jpg')}
           style={styles.logo}
           resizeMode="contain"
         />
@@ -169,7 +169,7 @@ export default function RoomDetailsScreen() {
           contentStyle={styles.bookButtonContent}
           disabled={!isBookable}
           onPress={() =>
-            router.push(`/bookings/create?roomId=${room.id}`)
+            router.push(`/customer/booking/create?roomId=${room.id}`)
           }
         >
           {isBookable

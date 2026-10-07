@@ -1,7 +1,9 @@
 import {
+  keepPreviousData,
   useMutation,
   useQuery,
   useQueryClient,
+  type QueryClient,
   type UseMutationOptions,
 } from '@tanstack/react-query';
 
@@ -15,6 +17,7 @@ import {
 } from '@/src/services/userService';
 import type {
   AvailabilityQuery,
+  BiometricDevice,
   Booking,
   BookingFilters,
   CreateBookingPayload,
@@ -41,6 +44,7 @@ export const queryKeys = {
     ['availability', query] as const,
   bookings: {
     all: ['bookings'] as const,
+    lists: () => ['bookings', 'list'] as const,
     list: (filters: BookingFilters) =>
       ['bookings', 'list', filters] as const,
     detail: (id: number) => ['bookings', 'detail', id] as const,
@@ -48,11 +52,55 @@ export const queryKeys = {
   users: {
     all: ['users'] as const,
     list: () => ['users', 'list'] as const,
+    biometric: (userId: number) =>
+      ['users', 'biometric', userId] as const,
   },
   reports: {
     dashboard: () => ['reports', 'dashboard'] as const,
   },
 } as const;
+
+/*
+ * Every successful write below patches the cached list straight away and then
+ * invalidates it. The patch is what makes the screen change on the same frame
+ * as the success; the refetch that follows confirms it against the server.
+ */
+
+function upsertById<T extends { id: number }>(
+  list: T[] | undefined,
+  item: T,
+  position: 'start' | 'end' = 'end',
+): T[] | undefined {
+  if (!list) return list;
+
+  if (list.some((existing) => existing.id === item.id)) {
+    return list.map((existing) =>
+      existing.id === item.id ? item : existing,
+    );
+  }
+
+  return position === 'start' ? [item, ...list] : [...list, item];
+}
+
+function removeById<T extends { id: number }>(
+  list: T[] | undefined,
+  id: number,
+): T[] | undefined {
+  return list?.filter((item) => item.id !== id);
+}
+
+/** Replaces one booking in every cached booking list, whatever its filters. */
+function patchBookingLists(queryClient: QueryClient, booking: Booking) {
+  queryClient.setQueriesData<Booking[]>(
+    { queryKey: queryKeys.bookings.lists() },
+    (list) =>
+      list?.map((existing) =>
+        existing.id === booking.id ? booking : existing,
+      ),
+  );
+
+  queryClient.setQueryData(queryKeys.bookings.detail(booking.id), booking);
+}
 
 /* ------------------------------------------------------------------ rooms */
 
@@ -114,11 +162,16 @@ export function useCreateRoom(
     mutationFn: (payload: RoomWritePayload) =>
       roomService.createRoom(payload),
     ...options,
-    onSuccess: (...args) => {
+    onSuccess: (room, ...rest) => {
+      queryClient.setQueryData<Room[]>(queryKeys.rooms.list(), (list) =>
+        upsertById(list, room),
+      );
       void queryClient.invalidateQueries({
         queryKey: queryKeys.rooms.all,
       });
-      options?.onSuccess?.(...args);
+      void queryClient.invalidateQueries({ queryKey: ['availability'] });
+      void queryClient.invalidateQueries({ queryKey: ['reports'] });
+      options?.onSuccess?.(room, ...rest);
     },
   });
 }
@@ -141,11 +194,17 @@ export function useUpdateRoom(
       payload: RoomWritePayload;
     }) => roomService.updateRoom(roomId, payload),
     ...options,
-    onSuccess: (...args) => {
+    onSuccess: (room, ...rest) => {
+      queryClient.setQueryData<Room[]>(queryKeys.rooms.list(), (list) =>
+        upsertById(list, room),
+      );
+      queryClient.setQueryData(queryKeys.rooms.detail(room.id), room);
       void queryClient.invalidateQueries({
         queryKey: queryKeys.rooms.all,
       });
-      options?.onSuccess?.(...args);
+      void queryClient.invalidateQueries({ queryKey: ['availability'] });
+      void queryClient.invalidateQueries({ queryKey: ['reports'] });
+      options?.onSuccess?.(room, ...rest);
     },
   });
 }
@@ -158,11 +217,19 @@ export function useDeleteRoom(
   return useMutation({
     mutationFn: (roomId: number) => roomService.deleteRoom(roomId),
     ...options,
-    onSuccess: (...args) => {
+    onSuccess: (data, roomId, ...rest) => {
+      queryClient.setQueryData<Room[]>(queryKeys.rooms.list(), (list) =>
+        removeById(list, roomId),
+      );
+      queryClient.removeQueries({
+        queryKey: queryKeys.rooms.detail(roomId),
+      });
       void queryClient.invalidateQueries({
         queryKey: queryKeys.rooms.all,
       });
-      options?.onSuccess?.(...args);
+      void queryClient.invalidateQueries({ queryKey: ['availability'] });
+      void queryClient.invalidateQueries({ queryKey: ['reports'] });
+      options?.onSuccess?.(data, roomId, ...rest);
     },
   });
 }
@@ -173,6 +240,10 @@ export function useBookings(filters: BookingFilters = {}) {
   return useQuery({
     queryKey: queryKeys.bookings.list(filters),
     queryFn: () => bookingService.listBookings(filters),
+    // Keeps the current cards on screen while a new search or status filter
+    // loads. Without it the whole screen flips to a spinner on every
+    // keystroke, which unmounts the search box and drops the keyboard.
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -193,7 +264,11 @@ export function useCreateBooking(
     mutationFn: (payload: CreateBookingPayload) =>
       bookingService.createBooking(payload),
     ...options,
-    onSuccess: (...args) => {
+    onSuccess: (booking, ...rest) => {
+      queryClient.setQueryData(
+        queryKeys.bookings.detail(booking.id),
+        booking,
+      );
       void queryClient.invalidateQueries({
         queryKey: queryKeys.bookings.all,
       });
@@ -204,7 +279,7 @@ export function useCreateBooking(
       void queryClient.invalidateQueries({
         queryKey: ['reports'],
       });
-      options?.onSuccess?.(...args);
+      options?.onSuccess?.(booking, ...rest);
     },
   });
 }
@@ -227,12 +302,14 @@ export function useUpdateBooking(
       payload: UpdateBookingPayload;
     }) => bookingService.updateBooking(bookingId, payload),
     ...options,
-    onSuccess: (...args) => {
+    onSuccess: (booking, ...rest) => {
+      patchBookingLists(queryClient, booking);
       void queryClient.invalidateQueries({
         queryKey: queryKeys.bookings.all,
       });
+      void queryClient.invalidateQueries({ queryKey: ['availability'] });
       void queryClient.invalidateQueries({ queryKey: ['reports'] });
-      options?.onSuccess?.(...args);
+      options?.onSuccess?.(booking, ...rest);
     },
   });
 }
@@ -246,13 +323,14 @@ export function useCancelBooking(
     mutationFn: (bookingId: number) =>
       bookingService.cancelBooking(bookingId),
     ...options,
-    onSuccess: (...args) => {
+    onSuccess: (booking, ...rest) => {
+      patchBookingLists(queryClient, booking);
       void queryClient.invalidateQueries({
         queryKey: queryKeys.bookings.all,
       });
       void queryClient.invalidateQueries({ queryKey: ['availability'] });
       void queryClient.invalidateQueries({ queryKey: ['reports'] });
-      options?.onSuccess?.(...args);
+      options?.onSuccess?.(booking, ...rest);
     },
   });
 }
@@ -275,11 +353,20 @@ export function useCreateUser(
     mutationFn: (payload: AdminCreateUserPayload) =>
       userService.create(payload),
     ...options,
-    onSuccess: (...args) => {
+    onSuccess: (user, ...rest) => {
+      // The API lists newest accounts first, so the new one goes on top.
+      queryClient.setQueryData<User[]>(queryKeys.users.list(), (list) =>
+        upsertById(list, user, 'start'),
+      );
+      queryClient.setQueryData<BiometricDevice[]>(
+        queryKeys.users.biometric(user.id),
+        [],
+      );
       void queryClient.invalidateQueries({
-        queryKey: queryKeys.users.all,
+        queryKey: queryKeys.users.list(),
       });
-      options?.onSuccess?.(...args);
+      void queryClient.invalidateQueries({ queryKey: ['reports'] });
+      options?.onSuccess?.(user, ...rest);
     },
   });
 }
@@ -302,11 +389,18 @@ export function useUpdateUser(
       payload: AdminUpdateUserPayload;
     }) => userService.update(userId, payload),
     ...options,
-    onSuccess: (...args) => {
+    onSuccess: (user, ...rest) => {
+      queryClient.setQueryData<User[]>(queryKeys.users.list(), (list) =>
+        upsertById(list, user),
+      );
       void queryClient.invalidateQueries({
-        queryKey: queryKeys.users.all,
+        queryKey: queryKeys.users.list(),
       });
-      options?.onSuccess?.(...args);
+      // A renamed guest shows up under their new name on their bookings.
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.bookings.all,
+      });
+      options?.onSuccess?.(user, ...rest);
     },
   });
 }
@@ -319,12 +413,27 @@ export function useDeleteUser(
   return useMutation({
     mutationFn: (userId: number) => userService.remove(userId),
     ...options,
-    onSuccess: (...args) => {
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.users.all,
+    onSuccess: (data, userId, ...rest) => {
+      queryClient.setQueryData<User[]>(queryKeys.users.list(), (list) =>
+        removeById(list, userId),
+      );
+      queryClient.removeQueries({
+        queryKey: queryKeys.users.biometric(userId),
       });
-      options?.onSuccess?.(...args);
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.users.list(),
+      });
+      void queryClient.invalidateQueries({ queryKey: ['reports'] });
+      options?.onSuccess?.(data, userId, ...rest);
     },
+  });
+}
+
+/** The devices enrolled for biometric sign-in on one account. Admin only. */
+export function useUserBiometricDevices(userId: number) {
+  return useQuery({
+    queryKey: queryKeys.users.biometric(userId),
+    queryFn: () => userService.listBiometricDevices(userId),
   });
 }
 
@@ -332,9 +441,21 @@ export function useDeleteUser(
 export function useResetUserBiometric(
   options?: UseMutationOptions<void, Error, number>,
 ) {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (userId: number) => userService.resetBiometric(userId),
     ...options,
+    onSuccess: (data, userId, ...rest) => {
+      queryClient.setQueryData<BiometricDevice[]>(
+        queryKeys.users.biometric(userId),
+        [],
+      );
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.users.biometric(userId),
+      });
+      options?.onSuccess?.(data, userId, ...rest);
+    },
   });
 }
 

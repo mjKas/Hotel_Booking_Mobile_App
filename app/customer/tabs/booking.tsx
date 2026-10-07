@@ -1,25 +1,24 @@
 import React from 'react';
-import {
-  Image,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
-import { Button, Card, Chip, Text } from 'react-native-paper';
+import { Alert, FlatList, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 
+import { toErrorMessage } from '@/src/api/apiError';
+import { BookingCard } from '@/src/components/booking-card';
+import { BrandHeader, countLabel } from '@/src/components/brand-header';
 import {
   EmptyState,
   ErrorState,
   LoadingState,
 } from '@/src/components/screen-states';
-import { useBookings } from '@/src/hooks/queries';
+import { useBookings, useCancelBooking } from '@/src/hooks/queries';
 import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
-import { formatDate, formatMoney } from '@/src/lib/format';
-import { BOOKING_STATUS_LABELS } from '@/src/types/domain';
+import type { Booking } from '@/src/types/domain';
 
-/** The signed-in guest's own bookings. The API scopes GET /bookings/ for us. */
+/**
+ * The signed-in guest's own bookings. GET /bookings/ is scoped server-side to
+ * the caller for anyone who is not an administrator, so no other guest's
+ * bookings can reach this screen; the query cache is wiped on sign-out.
+ */
 export default function CustomerBookingsScreen() {
   const colors = useAppThemeColors();
   const styles = createStyles(colors);
@@ -32,6 +31,35 @@ export default function CustomerBookingsScreen() {
     refetch,
     isRefetching,
   } = useBookings();
+
+  const cancelBooking = useCancelBooking();
+
+  const confirmCancel = (booking: Booking) => {
+    Alert.alert(
+      'Cancel booking',
+      `Cancel ${booking.reference} for ${booking.room.roomType.name}?`,
+      [
+        { text: 'Keep it', style: 'cancel' },
+        {
+          text: 'Cancel booking',
+          style: 'destructive',
+          onPress: () =>
+            cancelBooking.mutate(booking.id, {
+              onSuccess: (updated) =>
+                Alert.alert(
+                  'Booking cancelled',
+                  `${updated.reference} has been cancelled.`,
+                ),
+              onError: (err) =>
+                Alert.alert(
+                  'Could not cancel',
+                  toErrorMessage(err, 'We could not cancel this booking.'),
+                ),
+            }),
+        },
+      ],
+    );
+  };
 
   if (isPending) {
     return <LoadingState label="Loading your bookings…" />;
@@ -48,216 +76,68 @@ export default function CustomerBookingsScreen() {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={isRefetching}
-          onRefresh={() => void refetch()}
-          tintColor={colors.primary}
-        />
-      }
-    >
-      {/* Hotel Branding */}
-      <View style={styles.branding}>
-        <Image
-          source={require('../../../assets/images/royal-crest-logo.jpg')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
+    <View style={styles.container}>
+      <BrandHeader
+        title="My Bookings"
+        subtitle={countLabel(bookings.length, 'booking')}
+        action={{
+          label: 'Refresh',
+          icon: 'refresh',
+          onPress: () => void refetch(),
+          loading: isRefetching,
+        }}
+      />
 
-        <Text style={styles.hotelName}>
-          Royal Crest Hotel
-        </Text>
-      </View>
-
-      {/* Page Title */}
-      <Text style={styles.title}>My Bookings</Text>
-
-      {bookings.length === 0 ? (
-        <EmptyState
-          title="No bookings yet"
-          description="Find a room and your reservations will appear here."
-          actionLabel="Browse rooms"
-          onAction={() => router.push('/rooms')}
-        />
-      ) : (
-        bookings.map((booking) => (
-          <Card key={booking.id} style={styles.card}>
-            <Card.Content>
-              <View style={styles.topRow}>
-                <View>
-                  <Text style={styles.bookingId}>
-                    {booking.reference}
-                  </Text>
-
-                  <Text style={styles.room}>
-                    {booking.room.roomType.name}
-                  </Text>
-                </View>
-
-                <Chip
-                  compact
-                  style={[
-                    styles.statusChip,
-                    booking.status === 'CANCELLED' && {
-                      backgroundColor: colors.errorSurface,
-                    },
-                  ]}
-                  textStyle={[
-                    styles.statusText,
-                    booking.status === 'CANCELLED' && {
-                      color: colors.error,
-                    },
-                  ]}
-                >
-                  {BOOKING_STATUS_LABELS[booking.status]}
-                </Chip>
-              </View>
-
-              <Text style={styles.details}>
-                {formatDate(booking.checkIn)} –{' '}
-                {formatDate(booking.checkOut)}
-              </Text>
-
-              <Text style={styles.details}>
-                {booking.guests} {booking.guests === 1 ? 'Guest' : 'Guests'} ·
-                Room {booking.room.roomNumber}
-              </Text>
-
-              <View style={styles.bottomRow}>
-                <Text style={styles.total}>
-                  {formatMoney(booking.totalPrice, booking.currency)}
-                </Text>
-
-                <Button
-                  mode="contained"
-                  compact
-                  buttonColor={colors.secondary}
-                  textColor="#000000"
-                  onPress={() =>
-                    router.push(`/bookings/${booking.id}`)
-                  }
-                >
-                  View
-                </Button>
-              </View>
-            </Card.Content>
-          </Card>
-        ))
-      )}
-
-      {/* Back Button */}
-      <Button
-        mode="text"
-        icon="arrow-left"
-        textColor={colors.textPrimary}
-        onPress={() => router.back()}
-        style={styles.backButton}
-      >
-        Back
-      </Button>
-    </ScrollView>
+      <FlatList
+        data={bookings}
+        keyExtractor={(item) => String(item.id)}
+        contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
+        refreshing={isRefetching}
+        onRefresh={() => void refetch()}
+        ListEmptyComponent={
+          <EmptyState
+            title="No bookings yet"
+            description="Find a room and your reservations will appear here."
+            actionLabel="View rooms"
+            onAction={() => router.navigate('/customer/rooms')}
+          />
+        }
+        renderItem={({ item }) => (
+          <BookingCard
+            booking={item}
+            actions={[
+              {
+                label: 'View',
+                tone: 'primary',
+                onPress: () => router.push(`/customer/booking/${item.id}`),
+              },
+              {
+                label: 'Cancel',
+                tone: 'destructive',
+                onPress: () => confirmCancel(item),
+                disabled:
+                  item.status === 'CANCELLED' ||
+                  item.status === 'CHECKED_OUT' ||
+                  cancelBooking.isPending,
+              },
+            ]}
+          />
+        )}
+      />
+    </View>
   );
 }
 
-const createStyles = (
-  colors: ReturnType<typeof useAppThemeColors>,
-) =>
+const createStyles = (colors: ReturnType<typeof useAppThemeColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.background,
     },
 
-    content: {
-      padding: 20,
+    list: {
+      padding: 16,
       paddingBottom: 40,
-    },
-
-    branding: {
-      alignItems: 'center',
-      marginBottom: 24,
-    },
-
-    logo: {
-      width: 100,
-      height: 70,
-      marginBottom: 8,
-    },
-
-    hotelName: {
-      color: colors.textPrimary,
-      fontSize: 18,
-      fontWeight: '800',
-      textAlign: 'center',
-    },
-
-    title: {
-      color: colors.textPrimary,
-      fontSize: 28,
-      fontWeight: '800',
-      marginBottom: 18,
-    },
-
-    card: {
-      backgroundColor: colors.surface,
-      borderRadius: 14,
-      marginBottom: 14,
-    },
-
-    topRow: {
-      alignItems: 'flex-start',
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      gap: 12,
-    },
-
-    bookingId: {
-      color: colors.textSecondary,
-      fontSize: 13,
-      fontWeight: '700',
-    },
-
-    room: {
-      color: colors.textPrimary,
-      fontSize: 20,
-      fontWeight: '700',
-      marginTop: 5,
-    },
-
-    statusChip: {
-      backgroundColor: colors.successSurface,
-    },
-
-    statusText: {
-      color: colors.success,
-      fontSize: 10,
-      fontWeight: '800',
-    },
-
-    details: {
-      color: colors.textSecondary,
-      marginTop: 8,
-    },
-
-    bottomRow: {
-      alignItems: 'center',
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginTop: 16,
-    },
-
-    total: {
-      color: colors.textPrimary,
-      fontSize: 20,
-      fontWeight: '800',
-    },
-
-    backButton: {
-      alignSelf: 'flex-start',
-      marginTop: 4,
     },
   });

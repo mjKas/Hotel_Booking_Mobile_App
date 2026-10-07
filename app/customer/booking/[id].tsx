@@ -82,7 +82,7 @@ export default function BookingDetailsScreen() {
       {/* Hotel Branding */}
       <View style={styles.branding}>
         <Image
-          source={require('../../assets/images/royal-crest-logo.jpg')}
+          source={require('../../../assets/images/royal-crest-logo.jpg')}
           style={styles.logo}
           resizeMode="contain"
         />

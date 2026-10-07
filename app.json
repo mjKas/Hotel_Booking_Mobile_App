@@ -41,11 +41,16 @@
           }
         }
       ],
-      "expo-secure-store",
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": "Royal Crest Hotel uses Face ID to securely authenticate you."
+        }
+      ],
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "Allow Royal Crest to use Face ID to sign you in."
+          "faceIDPermission": "Royal Crest Hotel uses Face ID to securely authenticate you."
         }
       ],
       [

@@ -1,29 +1,24 @@
 import React, { useState } from 'react';
-import {
-  Image,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import {
   Avatar,
   Button,
   Card,
-  Dialog,
   Divider,
-  HelperText,
   List,
-  Portal,
   Text,
   TextInput,
 } from 'react-native-paper';
 import { router } from 'expo-router';
 
 import { toErrorMessage } from '@/src/api/apiError';
+import { BrandHeader } from '@/src/components/brand-header';
+import { FormModal, useFormInputProps } from '@/src/components/form-modal';
 import { LoadingState } from '@/src/components/screen-states';
 import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
 import { authService } from '@/src/services/authService';
 import { useAuthStore } from '@/src/store/authStore';
+import { ROLE_LABELS } from '@/src/types/domain';
 
 function initials(fullName: string): string {
   return fullName
@@ -37,16 +32,17 @@ function initials(fullName: string): string {
 export default function CustomerProfileScreen() {
   const colors = useAppThemeColors();
   const styles = createStyles(colors);
+  const inputProps = useFormInputProps();
 
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
-  const signOut = useAuthStore((state) => state.signOut);
 
   const [isEditing, setIsEditing] = useState(false);
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
 
   // The guard above this screen means a null user only happens mid sign-out.
   if (!user) {
@@ -56,6 +52,7 @@ export default function CustomerProfileScreen() {
   function openEdit() {
     if (!user) return;
     setError(null);
+    setSaved(false);
     setFullName(user.fullName);
     setPhone(user.phone ?? '');
     setIsEditing(true);
@@ -71,6 +68,8 @@ export default function CustomerProfileScreen() {
     setIsSaving(true);
 
     try {
+      // PATCH /auth/me accepts full_name and phone only; the API has no way to
+      // change an email address (see docs/BACKEND_ISSUES.md).
       setUser(
         await authService.updateProfile({
           fullName: fullName.trim(),
@@ -79,6 +78,7 @@ export default function CustomerProfileScreen() {
       );
 
       setIsEditing(false);
+      setSaved(true);
     } catch (err) {
       setError(toErrorMessage(err, 'We could not save your details.'));
     } finally {
@@ -86,206 +86,196 @@ export default function CustomerProfileScreen() {
     }
   }
 
-  async function handleSignOut() {
-    // Revokes the refresh token server-side before clearing local state.
-    await signOut();
-    router.replace('/auth/login');
-  }
-
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Hotel Branding */}
-      <View style={styles.branding}>
-        <Image
-          source={require('../../../assets/images/royal-crest-logo.jpg')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
+    <View style={styles.container}>
+      <BrandHeader
+        title="My Profile"
+        subtitle={ROLE_LABELS[user.role]}
+        action={{ label: 'Edit', icon: 'pencil-outline', onPress: openEdit }}
+      />
 
-        <Text style={styles.hotelName}>
-          Royal Crest Hotel
-        </Text>
-      </View>
-
-      {/* Profile Header */}
-      <View style={styles.profileHeader}>
-        <Avatar.Text
-          size={82}
-          label={initials(user.fullName)}
-          color={colors.headerText}
-          style={styles.avatar}
-        />
-
-        <Text style={styles.name}>
-          {user.fullName}
-        </Text>
-
-        <Text style={styles.email}>
-          {user.email}
-        </Text>
-      </View>
-
-      {/* Personal Information */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <Text style={styles.sectionTitle}>
-            Personal Information
-          </Text>
-
-          <List.Item
-            title="Full Name"
-            description={user.fullName}
-            titleStyle={styles.listTitle}
-            descriptionStyle={styles.listDescription}
-            left={(props) => (
-              <List.Icon
-                {...props}
-                icon="account-outline"
-                color={colors.secondary}
-              />
-            )}
-          />
-
-          <Divider />
-
-          <List.Item
-            title="Email"
-            description={user.email}
-            titleStyle={styles.listTitle}
-            descriptionStyle={styles.listDescription}
-            left={(props) => (
-              <List.Icon
-                {...props}
-                icon="email-outline"
-                color={colors.secondary}
-              />
-            )}
-          />
-
-          <Divider />
-
-          <List.Item
-            title="Phone"
-            description={user.phone ?? 'Not provided'}
-            titleStyle={styles.listTitle}
-            descriptionStyle={styles.listDescription}
-            left={(props) => (
-              <List.Icon
-                {...props}
-                icon="phone-outline"
-                color={colors.secondary}
-              />
-            )}
-          />
-        </Card.Content>
-
-        <Card.Actions>
-          <Button onPress={openEdit} textColor={colors.primary}>
-            Edit details
-          </Button>
-        </Card.Actions>
-      </Card>
-
-      {/* Account Options */}
-      <Card style={styles.card}>
-        <List.Item
-          title="My Bookings"
-          description="View your reservations"
-          titleStyle={styles.listTitle}
-          descriptionStyle={styles.listDescription}
-          left={(props) => (
-            <List.Icon
-              {...props}
-              icon="calendar-check-outline"
-              color={colors.secondary}
-            />
-          )}
-          right={(props) => (
-            <List.Icon
-              {...props}
-              icon="chevron-right"
-              color={colors.textSecondary}
-            />
-          )}
-          onPress={() =>
-            router.push('/customer/tabs/booking')
-          }
-        />
-      </Card>
-
-      {/* Logout */}
-      <Button
-        mode="outlined"
-        icon="logout"
-        textColor={colors.error}
-        style={styles.logout}
-        onPress={handleSignOut}
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
       >
-        Logout
-      </Button>
+        <View style={styles.profileCard}>
+          <Avatar.Text
+            size={72}
+            label={initials(user.fullName)}
+            color="#000000"
+            style={styles.avatar}
+          />
 
-      <Portal>
-        <Dialog
-          visible={isEditing}
-          onDismiss={() => setIsEditing(false)}
-          dismissable={!isSaving}
-        >
-          <Dialog.Title>Edit your details</Dialog.Title>
+          <Text style={styles.name}>{user.fullName}</Text>
+          <Text style={styles.email}>{user.email}</Text>
+        </View>
 
-          <Dialog.Content>
-            <TextInput
-              label="Full name"
-              mode="outlined"
-              value={fullName}
-              onChangeText={setFullName}
-              style={styles.dialogInput}
+        {saved ? (
+          <Text style={styles.savedText}>Your details have been saved.</Text>
+        ) : null}
+
+        <Card style={styles.card}>
+          <Card.Content>
+            <Text style={styles.sectionTitle}>Personal Information</Text>
+
+            <List.Item
+              title="Full Name"
+              description={user.fullName}
+              titleStyle={styles.listTitle}
+              descriptionStyle={styles.listDescription}
+              left={(props) => (
+                <List.Icon
+                  {...props}
+                  icon="account-outline"
+                  color={colors.secondary}
+                />
+              )}
             />
 
-            <TextInput
-              label="Phone number"
-              mode="outlined"
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-              style={styles.dialogInput}
+            <Divider />
+
+            <List.Item
+              title="Email"
+              description={user.email}
+              titleStyle={styles.listTitle}
+              descriptionStyle={styles.listDescription}
+              left={(props) => (
+                <List.Icon
+                  {...props}
+                  icon="email-outline"
+                  color={colors.secondary}
+                />
+              )}
             />
 
-            {error ? (
-              <HelperText type="error" visible>
-                {error}
-              </HelperText>
-            ) : null}
-          </Dialog.Content>
+            <Divider />
 
-          <Dialog.Actions>
-            <Button
-              onPress={() => setIsEditing(false)}
-              disabled={isSaving}
-            >
-              Cancel
-            </Button>
+            <List.Item
+              title="Phone"
+              description={user.phone ?? 'Not provided'}
+              titleStyle={styles.listTitle}
+              descriptionStyle={styles.listDescription}
+              left={(props) => (
+                <List.Icon
+                  {...props}
+                  icon="phone-outline"
+                  color={colors.secondary}
+                />
+              )}
+            />
+          </Card.Content>
 
+          <Card.Actions>
             <Button
-              onPress={handleSave}
-              loading={isSaving}
-              disabled={isSaving}
+              mode="outlined"
+              onPress={openEdit}
+              textColor={colors.secondary}
+              style={styles.editButton}
             >
-              Save
+              Edit details
             </Button>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
-    </ScrollView>
+          </Card.Actions>
+        </Card>
+
+        <Card style={styles.card}>
+          <List.Item
+            title="My Bookings"
+            description="View your reservations"
+            titleStyle={styles.listTitle}
+            descriptionStyle={styles.listDescription}
+            left={(props) => (
+              <List.Icon
+                {...props}
+                icon="calendar-check-outline"
+                color={colors.secondary}
+              />
+            )}
+            right={(props) => (
+              <List.Icon
+                {...props}
+                icon="chevron-right"
+                color={colors.textSecondary}
+              />
+            )}
+            onPress={() => router.navigate('/customer/tabs/booking')}
+          />
+
+          <Divider />
+
+          <List.Item
+            title="Security"
+            description="Biometric sign-in and devices"
+            titleStyle={styles.listTitle}
+            descriptionStyle={styles.listDescription}
+            left={(props) => (
+              <List.Icon
+                {...props}
+                icon="shield-account-outline"
+                color={colors.secondary}
+              />
+            )}
+            right={(props) => (
+              <List.Icon
+                {...props}
+                icon="chevron-right"
+                color={colors.textSecondary}
+              />
+            )}
+            onPress={() => router.navigate('/customer/security')}
+          />
+        </Card>
+
+        <Text style={styles.hint}>
+          Sign Out is in the menu (☰) at the top left.
+        </Text>
+      </ScrollView>
+
+      <FormModal
+        visible={isEditing}
+        title="Edit your details"
+        onClose={() => setIsEditing(false)}
+        onSubmit={handleSave}
+        submitLabel="Save"
+        submitting={isSaving}
+        error={error}
+      >
+        <TextInput
+          {...inputProps}
+          label="Full name"
+          value={fullName}
+          onChangeText={setFullName}
+          autoCapitalize="words"
+          returnKeyType="next"
+        />
+
+        <TextInput
+          {...inputProps}
+          label="Phone number"
+          value={phone}
+          onChangeText={setPhone}
+          keyboardType="phone-pad"
+          returnKeyType="done"
+          onSubmitEditing={handleSave}
+        />
+
+        <TextInput
+          {...inputProps}
+          label="Email"
+          value={user.email}
+          editable={false}
+          right={<TextInput.Icon icon="lock-outline" />}
+        />
+
+        <Text style={styles.fieldNote}>
+          Email addresses cannot be changed in the app yet. Please contact the
+          front desk if yours needs updating.
+        </Text>
+      </FormModal>
+    </View>
   );
 }
 
-const createStyles = (
-  colors: ReturnType<typeof useAppThemeColors>,
-) =>
+const createStyles = (colors: ReturnType<typeof useAppThemeColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -293,35 +283,16 @@ const createStyles = (
     },
 
     content: {
+      padding: 16,
       paddingBottom: 40,
     },
 
-    branding: {
+    profileCard: {
       alignItems: 'center',
       backgroundColor: colors.surface,
-      paddingTop: 30,
-      paddingBottom: 18,
-    },
-
-    logo: {
-      width: 70,
-      height: 70,
-      borderRadius: 10,
-      marginBottom: 8,
-    },
-
-    hotelName: {
-      color: colors.textPrimary,
-      fontSize: 20,
-      fontWeight: '800',
-      textAlign: 'center',
-    },
-
-    profileHeader: {
-      backgroundColor: colors.primary,
-      alignItems: 'center',
-      paddingTop: 30,
-      paddingBottom: 30,
+      borderRadius: 14,
+      paddingVertical: 24,
+      paddingHorizontal: 16,
     },
 
     avatar: {
@@ -329,20 +300,26 @@ const createStyles = (
     },
 
     name: {
-      color: colors.headerText,
-      fontSize: 23,
+      color: colors.textPrimary,
+      fontSize: 22,
       fontWeight: '800',
       marginTop: 12,
     },
 
     email: {
-      color: colors.headerSubtle,
+      color: colors.textSecondary,
       marginTop: 4,
     },
 
+    savedText: {
+      color: colors.success,
+      textAlign: 'center',
+      marginTop: 12,
+      fontWeight: '600',
+    },
+
     card: {
-      marginHorizontal: 16,
-      marginTop: 16,
+      marginTop: 14,
       borderRadius: 14,
       backgroundColor: colors.surface,
       overflow: 'hidden',
@@ -364,15 +341,23 @@ const createStyles = (
       color: colors.textSecondary,
     },
 
-    dialogInput: {
-      marginBottom: 10,
-      backgroundColor: colors.surface,
+    editButton: {
+      borderColor: colors.secondary,
+      borderRadius: 8,
     },
 
-    logout: {
-      marginHorizontal: 16,
-      marginTop: 25,
-      borderColor: colors.error,
-      borderRadius: 10,
+    hint: {
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: 20,
+      fontSize: 13,
+    },
+
+    fieldNote: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      lineHeight: 17,
+      marginTop: -6,
+      marginBottom: 8,
     },
   });

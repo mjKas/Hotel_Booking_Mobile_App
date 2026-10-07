@@ -1,38 +1,16 @@
 import { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
-import { Stack } from 'expo-router';
+import { ActivityIndicator, Keyboard, StyleSheet, View } from 'react-native';
+import { Stack, usePathname } from 'expo-router';
 import { PaperProvider } from 'react-native-paper';
 import { StatusBar } from 'expo-status-bar';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 
 import {
   ThemePreferenceProvider,
   useThemePreference,
 } from '../src/context/theme-preference';
-import { ApiError } from '../src/api/apiError';
+import { queryClient } from '../src/lib/queryClient';
 import { useAuthStore } from '../src/store/authStore';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      // A 4xx will not fix itself on retry, and retrying a 401 fights with the
-      // token refresh already built into apiClient.
-      retry: (failureCount, error) => {
-        if (
-          error instanceof ApiError &&
-          error.status >= 400 &&
-          error.status < 500
-        ) {
-          return false;
-        }
-
-        return failureCount < 2;
-      },
-      staleTime: 30_000,
-    },
-    mutations: { retry: false },
-  },
-});
 
 export default function RootLayout() {
   return (
@@ -49,11 +27,17 @@ function RootLayoutContent() {
 
   const status = useAuthStore((state) => state.status);
   const restore = useAuthStore((state) => state.restore);
+  const pathname = usePathname();
 
   // Spends the stored refresh token to rebuild the session on a cold start.
   useEffect(() => {
     void restore();
   }, [restore]);
+
+  // A keyboard opened on one screen must not follow the user to the next one.
+  useEffect(() => {
+    Keyboard.dismiss();
+  }, [pathname]);
 
   return (
     <PaperProvider theme={paperTheme}>
@@ -75,8 +59,6 @@ function RootLayoutContent() {
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="auth" />
           <Stack.Screen name="customer" />
-          <Stack.Screen name="rooms" />
-          <Stack.Screen name="bookings" />
           <Stack.Screen name="admin" />
         </Stack>
       )}

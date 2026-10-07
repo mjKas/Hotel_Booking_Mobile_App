@@ -142,7 +142,7 @@ export const authService = {
 
   /**
    * Registers this device against the signed-in account and returns the
-   * one-time secret. Administrators only - the server rejects anyone else.
+   * one-time secret. Open to every role - guests as well as administrators.
    */
   async enrolBiometric(
     deviceId: string,

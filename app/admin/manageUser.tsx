@@ -1,24 +1,12 @@
 import React, { useState } from 'react';
-import {
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
-import {
-  Button,
-  HelperText,
-  Surface,
-  Text,
-  TextInput,
-} from 'react-native-paper';
+import { Alert, FlatList, Keyboard, StyleSheet, View } from 'react-native';
+import { Button, Chip, HelperText, Text, TextInput } from 'react-native-paper';
 
 import { ApiError, toErrorMessage } from '@/src/api/apiError';
+import { BrandHeader, countLabel } from '@/src/components/brand-header';
+import { FormModal, useFormInputProps } from '@/src/components/form-modal';
 import {
+  EmptyState,
   ErrorState,
   LoadingState,
 } from '@/src/components/screen-states';
@@ -27,15 +15,20 @@ import {
   useDeleteUser,
   useResetUserBiometric,
   useUpdateUser,
+  useUserBiometricDevices,
   useUsers,
 } from '@/src/hooks/queries';
 import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
+import { biometricService } from '@/src/services/biometricService';
 import { useAuthStore } from '@/src/store/authStore';
 import { ROLE_LABELS, type Role, type User } from '@/src/types/domain';
+
+const ROLES: Role[] = ['REGISTERED_USER', 'ADMIN'];
 
 export default function ManageUser() {
   const colors = useAppThemeColors();
   const styles = createStyles(colors);
+  const inputProps = useFormInputProps();
 
   const currentUser = useAuthStore((state) => state.user);
 
@@ -44,7 +37,6 @@ export default function ManageUser() {
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
-  const resetBiometric = useResetUserBiometric();
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -66,7 +58,10 @@ export default function ManageUser() {
     /[A-Z]/.test(password) &&
     /\d/.test(password);
 
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
   const openAddUser = () => {
+    Keyboard.dismiss();
     setEditingUser(null);
     setName('');
     setEmail('');
@@ -79,6 +74,7 @@ export default function ManageUser() {
   };
 
   const openEditUser = (user: User) => {
+    Keyboard.dismiss();
     setEditingUser(user);
     setName(user.fullName);
     setEmail(user.email);
@@ -100,7 +96,7 @@ export default function ManageUser() {
     setSubmitted(true);
     setFormError(null);
 
-    if (!name.trim() || !email.trim()) {
+    if (!name.trim() || (!editingUser && !isEmailValid)) {
       return;
     }
 
@@ -131,7 +127,15 @@ export default function ManageUser() {
         });
       }
 
+      const savedName = name.trim();
+      const wasEditing = editingUser !== null;
+
       closeModal();
+
+      Alert.alert(
+        wasEditing ? 'Account updated' : 'Account created',
+        `${savedName} has been saved.`,
+      );
     } catch (err) {
       // The API refuses self-demotion and duplicate emails with a 409.
       setFormError(
@@ -145,7 +149,7 @@ export default function ManageUser() {
   const handleDelete = (user: User) => {
     Alert.alert(
       'Delete User',
-      `Are you sure you want to delete ${user.fullName}?`,
+      `Are you sure you want to delete ${user.fullName}? This cannot be undone.`,
       [
         {
           text: 'Cancel',
@@ -156,50 +160,19 @@ export default function ManageUser() {
           style: 'destructive',
           onPress: () => {
             deleteUser.mutate(user.id, {
+              onSuccess: () =>
+                Alert.alert(
+                  'Account deleted',
+                  `${user.fullName} has been removed.`,
+                ),
               onError: (err) =>
                 Alert.alert(
                   'Could not delete',
                   // Accounts with booking history cannot be deleted; the
-                  // server says so and suggests suspending instead.
+                  // server says so (409) and suggests suspending instead.
                   toErrorMessage(
                     err,
                     'We could not delete this account.',
-                  ),
-                ),
-            });
-          },
-        },
-      ],
-    );
-  };
-
-  const handleResetBiometric = (user: User) => {
-    Alert.alert(
-      'Reset biometric sign-in',
-      `Every device enrolled against ${user.email} will lose biometric ` +
-        'access. They can still sign in with their password.',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Reset',
-          style: 'destructive',
-          onPress: () => {
-            resetBiometric.mutate(user.id, {
-              onSuccess: () =>
-                Alert.alert(
-                  'Biometric sign-in reset',
-                  `${user.email} will be asked for a password on their next ` +
-                    'sign-in.',
-                ),
-              onError: (err) =>
-                Alert.alert(
-                  'Could not reset',
-                  toErrorMessage(
-                    err,
-                    'We could not reset biometric sign-in.',
                   ),
                 ),
             });
@@ -223,864 +196,447 @@ export default function ManageUser() {
     );
   }
 
+  const saving = createUser.isPending || updateUser.isPending;
+
   return (
-    <KeyboardAvoidingView
-      style={[
-        styles.keyboardContainer,
-        {
-          backgroundColor: colors.background,
-        },
-      ]}
-      behavior={
-        Platform.OS === 'ios' ? 'padding' : 'height'
-      }
-    >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
+    <View style={styles.container}>
+      <BrandHeader
+        title="Manage Users"
+        subtitle={countLabel(users.length, 'account')}
+        action={{ label: 'Add', icon: 'plus', onPress: openAddUser }}
+      />
+
+      <FlatList
+        data={users}
+        keyExtractor={(item) => String(item.id)}
+        contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.container}>
+        refreshing={false}
+        onRefresh={() => void refetch()}
+        ListEmptyComponent={
+          <EmptyState
+            title="No users found"
+            description="Add a new user to get started."
+            actionLabel="Add a user"
+            onAction={openAddUser}
+          />
+        }
+        renderItem={({ item }) => (
+          <UserCard
+            user={item}
+            isCurrentUser={item.id === currentUser?.id}
+            deleting={deleteUser.isPending && deleteUser.variables === item.id}
+            onEdit={() => openEditUser(item)}
+            onDelete={() => handleDelete(item)}
+          />
+        )}
+      />
 
-          {/* ============================= */}
-          {/* BRANDING HEADER */}
-          {/* Same style as Manage Rooms */}
-          {/* ============================= */}
-
-          <View
-            style={[
-              styles.brandingHeader,
-              {
-                backgroundColor: colors.secondary,
-              },
-            ]}
-          >
-            <View style={styles.brandingContent}>
-
-              {/* Logo */}
-              <Image
-                source={require('../../assets/images/royal-crest-logo.jpg')}
-                style={styles.logo}
-                resizeMode="contain"
-              />
-
-              {/* Branding Text */}
-              <View style={styles.brandingText}>
-                <Text style={styles.hotelName}>
-                  Royal Crest Hotel
-                </Text>
-
-                <Text style={styles.userCount}>
-                  {users.length}{' '}
-                  {users.length === 1
-                    ? 'account'
-                    : 'accounts'}
-                </Text>
-              </View>
-
-              {/* Add Button */}
-              <Button
-                mode="text"
-                onPress={openAddUser}
-                icon="plus"
-                textColor="#000000"
-                labelStyle={styles.addButtonLabel}
-                compact
-              >
-                Add
-              </Button>
-
-            </View>
-          </View>
-
-          {/* ============================= */}
-          {/* TOP NAVIGATION HEADER */}
-          {/* ============================= */}
-
-          <View style={styles.topHeader}>
-            <View style={styles.menuPlaceholder} />
-
-            <Text
-              style={[
-                styles.topHeaderTitle,
-                {
-                  color: '#FFFFFF',
-                },
-              ]}
-            >
-              Manage Users
-            </Text>
-
-            <View style={styles.topHeaderSpacer} />
-          </View>
-
-          {/* ============================= */}
-          {/* USERS */}
-          {/* ============================= */}
-
-          <View style={styles.userList}>
-            {users.map((user) => (
-              <Surface
-                key={user.id}
-                elevation={2}
-                style={[
-                  styles.userCard,
-                  {
-                    backgroundColor: colors.surface,
-                  },
-                ]}
-              >
-                {/* User Top */}
-                <View style={styles.userTopRow}>
-
-                  <View
-                    style={[
-                      styles.userIcon,
-                      {
-                        backgroundColor: colors.secondary,
-                      },
-                    ]}
-                  >
-                    <Text style={styles.userIconText}>
-                      {user.fullName
-                        .charAt(0)
-                        .toUpperCase()}
-                    </Text>
-                  </View>
-
-                  <View style={styles.userInfo}>
-                    <Text
-                      style={[
-                        styles.userName,
-                        {
-                          color: colors.textPrimary,
-                        },
-                      ]}
-                    >
-                      {user.fullName}
-                      {user.id === currentUser?.id ? ' (you)' : ''}
-                    </Text>
-
-                    <Text
-                      style={[
-                        styles.userRole,
-                        {
-                          color: colors.secondary,
-                        },
-                      ]}
-                    >
-                      {ROLE_LABELS[user.role]}
-                      {user.status === 'SUSPENDED' ? ' · Suspended' : ''}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* User Details */}
-                <View style={styles.userDetails}>
-                  <Text
-                    style={[
-                      styles.detailText,
-                      {
-                        color: colors.textSecondary,
-                      },
-                    ]}
-                  >
-                    {user.email}
-                  </Text>
-
-                  {user.phone ? (
-                    <Text
-                      style={[
-                        styles.detailText,
-                        {
-                          color: colors.textSecondary,
-                        },
-                      ]}
-                    >
-                      {user.phone}
-                    </Text>
-                  ) : null}
-                </View>
-
-                {/* Actions */}
-                <View style={styles.actions}>
-                  <Button
-                    mode="outlined"
-                    onPress={() =>
-                      openEditUser(user)
-                    }
-                    style={[
-                      styles.editButton,
-                      {
-                        borderColor:
-                          colors.secondary,
-                      },
-                    ]}
-                    contentStyle={
-                      styles.actionContent
-                    }
-                    labelStyle={[
-                      styles.editButtonLabel,
-                      {
-                        color: colors.secondary,
-                      },
-                    ]}
-                  >
-                    Edit
-                  </Button>
-
-                  <Button
-                    mode="outlined"
-                    disabled={user.id === currentUser?.id}
-                    onPress={() =>
-                      handleDelete(user)
-                    }
-                    style={styles.deleteButton}
-                    contentStyle={
-                      styles.actionContent
-                    }
-                    labelStyle={
-                      styles.deleteButtonLabel
-                    }
-                  >
-                    Delete
-                  </Button>
-                </View>
-
-                {/* Clears every phone enrolled for biometric sign-in. */}
-                <Button
-                  mode="text"
-                  icon="fingerprint"
-                  onPress={() => handleResetBiometric(user)}
-                  disabled={resetBiometric.isPending}
-                  textColor={colors.textSecondary}
-                  contentStyle={styles.actionContent}
-                >
-                  Reset biometric
-                </Button>
-              </Surface>
-            ))}
-
-            {users.length === 0 && (
-              <Surface
-                elevation={1}
-                style={[
-                  styles.emptyCard,
-                  {
-                    backgroundColor:
-                      colors.surface,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.emptyTitle,
-                    {
-                      color: colors.textPrimary,
-                    },
-                  ]}
-                >
-                  No users found
-                </Text>
-
-                <Text
-                  style={[
-                    styles.emptyText,
-                    {
-                      color: colors.textSecondary,
-                    },
-                  ]}
-                >
-                  Add a new user to get started.
-                </Text>
-              </Surface>
-            )}
-          </View>
-        </View>
-      </ScrollView>
-
-      {/* ============================= */}
-      {/* ADD / EDIT MODAL */}
-      {/* ============================= */}
-
-      <Modal
+      <FormModal
         visible={modalVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={closeModal}
+        title={editingUser ? 'Edit User' : 'Add User'}
+        subtitle={
+          editingUser
+            ? 'Update the user information'
+            : 'Create a new user account'
+        }
+        onClose={closeModal}
+        onSubmit={handleSave}
+        submitLabel={editingUser ? 'Save' : 'Create'}
+        submitting={saving}
+        error={formError}
       >
-        <KeyboardAvoidingView
-          style={styles.modalContainer}
-          behavior={
-            Platform.OS === 'ios'
-              ? 'padding'
-              : undefined
+        <TextInput
+          {...inputProps}
+          label="Full Name"
+          value={name}
+          onChangeText={setName}
+          autoCapitalize="words"
+          autoCorrect={false}
+          returnKeyType="next"
+          error={submitted && !name.trim()}
+        />
+
+        {submitted && !name.trim() ? (
+          <HelperText type="error" style={styles.helper}>
+            Please enter the user&apos;s name.
+          </HelperText>
+        ) : null}
+
+        <TextInput
+          {...inputProps}
+          label="Email Address"
+          value={email}
+          onChangeText={setEmail}
+          editable={!editingUser}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          returnKeyType="next"
+          error={!editingUser && submitted && !isEmailValid}
+          right={
+            editingUser ? <TextInput.Icon icon="lock-outline" /> : undefined
           }
-        >
-          <View style={styles.modalOverlay}>
-            <Surface
-              elevation={5}
-              style={styles.modalCard}
+        />
+
+        {editingUser ? (
+          <Text style={styles.fieldNote}>
+            The API does not support changing an email address yet.
+          </Text>
+        ) : submitted && !isEmailValid ? (
+          <HelperText type="error" style={styles.helper}>
+            Please enter a valid email address.
+          </HelperText>
+        ) : null}
+
+        <TextInput
+          {...inputProps}
+          label="Phone Number"
+          value={phone}
+          onChangeText={setPhone}
+          keyboardType="phone-pad"
+          returnKeyType={editingUser ? 'done' : 'next'}
+        />
+
+        {!editingUser ? (
+          <>
+            <TextInput
+              {...inputProps}
+              label="Temporary Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="done"
+              onSubmitEditing={Keyboard.dismiss}
+              error={submitted && !isPasswordValid}
+            />
+
+            <HelperText
+              type={submitted && !isPasswordValid ? 'error' : 'info'}
+              style={styles.helper}
             >
-              <ScrollView
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-              >
-                <Text
-                  style={[
-                    styles.modalTitle,
-                    {
-                      color: colors.textPrimary,
-                    },
-                  ]}
-                >
-                  {editingUser
-                    ? 'Edit User'
-                    : 'Add User'}
-                </Text>
+              At least 10 characters, with upper and lower case and a number.
+            </HelperText>
+          </>
+        ) : null}
 
-                <Text
-                  style={[
-                    styles.modalSubtitle,
-                    {
-                      color: colors.textSecondary,
-                    },
-                  ]}
-                >
-                  {editingUser
-                    ? 'Update the user information'
-                    : 'Create a new user account'}
-                </Text>
+        <Text style={styles.fieldLabel}>Role</Text>
 
-                {/* Name */}
-                <TextInput
-                  mode="outlined"
-                  label="Full Name"
-                  value={name}
-                  onChangeText={setName}
-                  autoCapitalize="words"
-                  autoCorrect={false}
-                  style={[
-                    styles.modalInput,
-                    {
-                      backgroundColor:
-                        colors.surface,
-                    },
-                  ]}
-                  error={
-                    submitted && !name.trim()
-                  }
-                  textColor={colors.textPrimary}
-                  outlineColor={
-                    colors.textFieldOutline
-                  }
-                  activeOutlineColor={
-                    colors.textFieldActiveOutline
-                  }
-                  placeholderTextColor={
-                    colors.textFieldPlaceholder
-                  }
-                />
-
-                {submitted && !name.trim() && (
-                  <Text style={styles.errorText}>
-                    Please enter the user&apos;s name.
-                  </Text>
-                )}
-
-                {/* Email */}
-                <TextInput
-                  mode="outlined"
-                  label="Email Address"
-                  value={email}
-                  onChangeText={setEmail}
-                  editable={!editingUser}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  style={[
-                    styles.modalInput,
-                    {
-                      backgroundColor:
-                        colors.surface,
-                    },
-                  ]}
-                  error={
-                    submitted && !email.trim()
-                  }
-                  textColor={colors.textPrimary}
-                  outlineColor={
-                    colors.textFieldOutline
-                  }
-                  activeOutlineColor={
-                    colors.textFieldActiveOutline
-                  }
-                  placeholderTextColor={
-                    colors.textFieldPlaceholder
-                  }
-                />
-
-                {submitted && !email.trim() && (
-                  <Text style={styles.errorText}>
-                    Please enter the user&apos;s email.
-                  </Text>
-                )}
-
-                {/* Password - only when creating an account */}
-                {!editingUser && (
-                  <>
-                    <TextInput
-                      mode="outlined"
-                      label="Temporary Password"
-                      value={password}
-                      onChangeText={setPassword}
-                      secureTextEntry
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      style={[
-                        styles.modalInput,
-                        {
-                          backgroundColor:
-                            colors.surface,
-                        },
-                      ]}
-                      error={submitted && !isPasswordValid}
-                      textColor={colors.textPrimary}
-                      outlineColor={
-                        colors.textFieldOutline
-                      }
-                      activeOutlineColor={
-                        colors.textFieldActiveOutline
-                      }
-                      placeholderTextColor={
-                        colors.textFieldPlaceholder
-                      }
-                    />
-
-                    {submitted && !isPasswordValid && (
-                      <Text style={styles.errorText}>
-                        At least 10 characters with an upper case letter, a
-                        lower case letter and a number.
-                      </Text>
-                    )}
-                  </>
-                )}
-
-                {/* Phone */}
-                <TextInput
-                  mode="outlined"
-                  label="Phone Number"
-                  value={phone}
-                  onChangeText={setPhone}
-                  keyboardType="phone-pad"
-                  autoCorrect={false}
-                  style={[
-                    styles.modalInput,
-                    {
-                      backgroundColor:
-                        colors.surface,
-                    },
-                  ]}
-                  textColor={colors.textPrimary}
-                  outlineColor={
-                    colors.textFieldOutline
-                  }
-                  activeOutlineColor={
-                    colors.textFieldActiveOutline
-                  }
-                  placeholderTextColor={
-                    colors.textFieldPlaceholder
-                  }
-                />
-
-                {/* Role */}
-                <Text
-                  style={[
-                    styles.roleLabel,
-                    {
-                      color: colors.textPrimary,
-                    },
-                  ]}
-                >
-                  User Role
-                </Text>
-
-                <View style={styles.roleContainer}>
-                  <Button
-                    mode={
-                      role === 'REGISTERED_USER'
-                        ? 'contained'
-                        : 'outlined'
-                    }
-                    onPress={() =>
-                      setRole('REGISTERED_USER')
-                    }
-                    style={styles.roleButton}
-                    buttonColor={
-                      role === 'REGISTERED_USER'
-                        ? colors.secondary
-                        : undefined
-                    }
-                    textColor={
-                      colors.textPrimary
-                    }
-                  >
-                    Customer
-                  </Button>
-
-                  <Button
-                    mode={
-                      role === 'ADMIN'
-                        ? 'contained'
-                        : 'outlined'
-                    }
-                    onPress={() =>
-                      setRole('ADMIN')
-                    }
-                    style={styles.roleButton}
-                    buttonColor={
-                      role === 'ADMIN'
-                        ? colors.secondary
-                        : undefined
-                    }
-                    textColor={
-                      colors.textPrimary
-                    }
-                  >
-                    Admin
-                  </Button>
-                </View>
-
-                {formError && (
-                  <HelperText type="error" visible>
-                    {formError}
-                  </HelperText>
-                )}
-
-                {/* Save */}
-                <Button
-                  mode="contained"
-                  onPress={handleSave}
-                  loading={
-                    createUser.isPending || updateUser.isPending
-                  }
-                  disabled={
-                    createUser.isPending || updateUser.isPending
-                  }
-                  style={styles.saveButton}
-                  contentStyle={
-                    styles.saveButtonContent
-                  }
-                  buttonColor={colors.secondary}
-                  textColor={colors.textPrimary}
-                >
-                  {editingUser
-                    ? 'Save Changes'
-                    : 'Add User'}
-                </Button>
-
-                {/* Cancel */}
-                <Button
-                  mode="text"
-                  onPress={closeModal}
-                  style={styles.cancelButton}
-                  textColor={
-                    colors.textSecondary
-                  }
-                >
-                  Cancel
-                </Button>
-              </ScrollView>
-            </Surface>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-    </KeyboardAvoidingView>
+        <View style={styles.chipRow}>
+          {ROLES.map((option) => (
+            <Chip
+              key={option}
+              selected={role === option}
+              showSelectedCheck={false}
+              onPress={() => setRole(option)}
+              disabled={editingUser?.id === currentUser?.id}
+              style={[
+                styles.chip,
+                role === option && { backgroundColor: colors.secondary },
+              ]}
+              textStyle={role === option ? styles.chipTextActive : undefined}
+            >
+              {ROLE_LABELS[option]}
+            </Chip>
+          ))}
+        </View>
+      </FormModal>
+    </View>
   );
 }
 
-/* ================================================= */
-/* STYLES */
-/* ================================================= */
+/**
+ * One account, with its own biometric device count so a reset is visible on
+ * the card the moment it succeeds.
+ */
+function UserCard({
+  user,
+  isCurrentUser,
+  deleting,
+  onEdit,
+  onDelete,
+}: {
+  user: User;
+  isCurrentUser: boolean;
+  deleting: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const colors = useAppThemeColors();
+  const styles = createStyles(colors);
 
-const createStyles = (
-  colors: ReturnType<typeof useAppThemeColors>,
-) =>
+  const devices = useUserBiometricDevices(user.id);
+  const resetBiometric = useResetUserBiometric();
+
+  const deviceCount = devices.data?.length ?? 0;
+
+  const biometricSummary = devices.isPending
+    ? 'Checking biometric sign-in…'
+    : devices.isError
+      ? 'Biometric status unavailable'
+      : deviceCount === 0
+        ? 'Biometric sign-in not set up'
+        : `Biometric sign-in on ${countLabel(deviceCount, 'device')}`;
+
+  const handleReset = () => {
+    Alert.alert(
+      'Reset biometric sign-in',
+      `Every device enrolled against ${user.email} will lose biometric ` +
+        'access. They can still sign in with their password and set it up ' +
+        'again.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: () => {
+            resetBiometric.mutate(user.id, {
+              onSuccess: async () => {
+                // Resetting your own account also forgets this phone's copy.
+                if (await biometricService.isEnrolledFor(user.email)) {
+                  await biometricService.clearLocal();
+                }
+
+                Alert.alert(
+                  'Biometric sign-in reset',
+                  `${user.email} will be asked for a password on their next ` +
+                    'sign-in.',
+                );
+              },
+              onError: (err) =>
+                Alert.alert(
+                  'Could not reset',
+                  toErrorMessage(err, 'We could not reset biometric sign-in.'),
+                ),
+            });
+          },
+        },
+      ],
+    );
+  };
+
+  const initials = user.fullName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('');
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.topRow}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{initials || '?'}</Text>
+        </View>
+
+        <View style={styles.info}>
+          <Text style={styles.name} numberOfLines={1}>
+            {user.fullName}
+            {isCurrentUser ? ' (you)' : ''}
+          </Text>
+
+          <Text style={styles.role}>
+            {ROLE_LABELS[user.role].toUpperCase()}
+            {user.status === 'SUSPENDED' ? ' · SUSPENDED' : ''}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.details}>
+        <Text style={styles.detailText}>{user.email}</Text>
+        {user.phone ? (
+          <Text style={styles.detailText}>{user.phone}</Text>
+        ) : null}
+      </View>
+
+      <View style={styles.actions}>
+        <Button
+          mode="outlined"
+          onPress={onEdit}
+          textColor={colors.secondary}
+          style={[styles.actionButton, { borderColor: colors.secondary }]}
+          contentStyle={styles.actionContent}
+        >
+          Edit
+        </Button>
+
+        <Button
+          mode="outlined"
+          onPress={onDelete}
+          disabled={isCurrentUser || deleting}
+          loading={deleting}
+          textColor={colors.error}
+          style={[
+            styles.actionButton,
+            {
+              borderColor: colors.error,
+              opacity: isCurrentUser ? 0.45 : 1,
+            },
+          ]}
+          contentStyle={styles.actionContent}
+        >
+          Delete
+        </Button>
+      </View>
+
+      <View style={styles.biometricRow}>
+        <Text style={styles.biometricText}>{biometricSummary}</Text>
+
+        <Button
+          mode="text"
+          icon="fingerprint"
+          compact
+          onPress={handleReset}
+          loading={resetBiometric.isPending}
+          disabled={
+            resetBiometric.isPending ||
+            (devices.isSuccess && deviceCount === 0)
+          }
+          textColor={colors.textPrimary}
+        >
+          Reset biometric
+        </Button>
+      </View>
+    </View>
+  );
+}
+
+const createStyles = (colors: ReturnType<typeof useAppThemeColors>) =>
   StyleSheet.create({
-    keyboardContainer: {
-      flex: 1,
-    },
-
-    scrollContent: {
-      flexGrow: 1,
-      paddingBottom: 30,
-    },
-
     container: {
-      width: '100%',
-      maxWidth: 700,
-      alignSelf: 'center',
+      flex: 1,
+      backgroundColor: colors.background,
     },
 
-    /* ============================= */
-    /* TOP HEADER */
-    /* ============================= */
+    list: {
+      padding: 16,
+      paddingBottom: 40,
+    },
 
-    topHeader: {
-      height: 80,
-      backgroundColor: colors.primary,
+    card: {
+      marginBottom: 14,
+      borderRadius: 14,
+      padding: 18,
+      backgroundColor: colors.surface,
+    },
+
+    topRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 20,
     },
 
-    menuPlaceholder: {
-      width: 48,
+    avatar: {
+      width: 58,
+      height: 58,
+      borderRadius: 29,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.secondary,
     },
 
-    topHeaderTitle: {
+    avatarText: {
       fontSize: 22,
-      fontWeight: '700',
-      textAlign: 'center',
+      fontWeight: '800',
+      color: '#FFFFFF',
     },
 
-    topHeaderSpacer: {
-      width: 48,
-    },
-
-    /* ============================= */
-    /* BRANDING HEADER */
-    /* ============================= */
-
-    brandingHeader: {
-      minHeight: 160,
-      paddingHorizontal: 42,
-      paddingVertical: 22,
-      justifyContent: 'center',
-    },
-
-    brandingContent: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      width: '100%',
-    },
-
-    logo: {
-      width: 82,
-      height: 82,
-      borderRadius: 41,
-      backgroundColor: '#FFFFFF',
-      marginRight: 18,
-    },
-
-    brandingText: {
+    info: {
       flex: 1,
-      justifyContent: 'center',
+      marginLeft: 14,
     },
 
-    hotelName: {
-      color: '#FFFFFF',
-      fontSize: 27,
+    name: {
+      fontSize: 20,
       fontWeight: '800',
-      lineHeight: 32,
+      color: colors.textPrimary,
     },
 
-    userCount: {
-      color: '#FFFFFF',
-      fontSize: 18,
-      marginTop: 2,
-    },
-
-    addButtonLabel: {
-      color: '#000000',
-      fontSize: 18,
-      fontWeight: '500',
-    },
-
-    /* ============================= */
-    /* USER LIST */
-    /* ============================= */
-
-    userList: {
-      paddingHorizontal: 34,
-      paddingTop: 34,
-      gap: 18,
-    },
-
-    userCard: {
-      borderRadius: 24,
-      padding: 28,
-    },
-
-    userTopRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-
-    userIcon: {
-      width: 64,
-      height: 64,
-      borderRadius: 32,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginRight: 18,
-    },
-
-    userIconText: {
-      color: '#FFFFFF',
-      fontSize: 26,
+    role: {
+      fontSize: 13,
       fontWeight: '800',
-    },
-
-    userInfo: {
-      flex: 1,
-    },
-
-    userName: {
-      fontSize: 24,
-      fontWeight: '800',
-    },
-
-    userRole: {
-      fontSize: 15,
-      fontWeight: '700',
       marginTop: 3,
-      textTransform: 'uppercase',
+      letterSpacing: 0.4,
+      color: colors.secondary,
     },
 
-    userDetails: {
-      marginTop: 22,
-      gap: 8,
+    details: {
+      marginTop: 14,
+      gap: 4,
     },
 
     detailText: {
-      fontSize: 16,
+      fontSize: 15,
+      color: colors.textSecondary,
     },
 
     actions: {
       flexDirection: 'row',
-      gap: 16,
-      marginTop: 24,
+      gap: 10,
+      marginTop: 15,
     },
 
-    editButton: {
+    actionButton: {
       flex: 1,
+      borderRadius: 8,
       borderWidth: 1.5,
-      borderRadius: 12,
-    },
-
-    deleteButton: {
-      flex: 1,
-      borderColor: '#FF8A8A',
-      borderWidth: 1.5,
-      borderRadius: 12,
     },
 
     actionContent: {
-      height: 50,
+      height: 44,
     },
 
-    editButtonLabel: {
-      fontSize: 17,
-      fontWeight: '600',
-    },
-
-    deleteButtonLabel: {
-      color: '#FF8A8A',
-      fontSize: 17,
-      fontWeight: '600',
-    },
-
-    emptyCard: {
-      borderRadius: 20,
-      padding: 30,
+    biometricRow: {
+      flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: 10,
+      gap: 8,
     },
 
-    emptyTitle: {
-      fontSize: 22,
-      fontWeight: '700',
-    },
-
-    emptyText: {
-      fontSize: 16,
-      marginTop: 8,
-    },
-
-    /* ============================= */
-    /* MODAL */
-    /* ============================= */
-
-    modalContainer: {
+    biometricText: {
       flex: 1,
-    },
-
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.55)',
-      justifyContent: 'flex-end',
-    },
-
-    modalCard: {
-      backgroundColor: colors.surface,
-      borderTopLeftRadius: 28,
-      borderTopRightRadius: 28,
-      paddingHorizontal: 24,
-      paddingTop: 28,
-      paddingBottom: 36,
-      maxHeight: '90%',
-    },
-
-    modalTitle: {
-      fontSize: 28,
-      fontWeight: '800',
-    },
-
-    modalSubtitle: {
-      fontSize: 15,
-      marginTop: 5,
-      marginBottom: 24,
-    },
-
-    modalInput: {
-      marginBottom: 12,
-    },
-
-    errorText: {
-      color: colors.error,
       fontSize: 13,
-      marginBottom: 8,
-      marginTop: -6,
+      color: colors.textSecondary,
     },
 
-    roleLabel: {
-      fontSize: 16,
-      fontWeight: '600',
-      marginTop: 8,
+    helper: {
+      paddingHorizontal: 0,
+      marginTop: -8,
+      marginBottom: 6,
+    },
+
+    fieldNote: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      marginTop: -8,
       marginBottom: 10,
     },
 
-    roleContainer: {
-      flexDirection: 'row',
-      gap: 12,
-    },
-
-    roleButton: {
-      flex: 1,
-      borderRadius: 10,
-    },
-
-    saveButton: {
-      marginTop: 26,
-      borderRadius: 10,
-    },
-
-    saveButtonContent: {
-      height: 50,
-    },
-
-    cancelButton: {
+    fieldLabel: {
+      color: colors.textPrimary,
+      fontSize: 13,
+      fontWeight: '700',
+      letterSpacing: 0.6,
+      textTransform: 'uppercase',
+      marginBottom: 8,
       marginTop: 4,
+    },
+
+    chipRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginBottom: 8,
+    },
+
+    chip: {
+      backgroundColor: colors.background,
+    },
+
+    chipTextActive: {
+      color: '#000000',
+      fontWeight: '700',
     },
   });

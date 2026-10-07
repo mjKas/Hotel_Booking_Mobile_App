@@ -260,7 +260,7 @@ export default function CustomerHomeScreen() {
                   compact
                   onPress={() =>
                     router.push(
-                      `/bookings/create?roomId=${result.room.id}`,
+                      `/customer/booking/create?roomId=${result.room.id}`,
                     )
                   }
                 >
@@ -281,7 +281,7 @@ export default function CustomerHomeScreen() {
         <Button
           mode="text"
           textColor={colors.secondary}
-          onPress={() => router.push('/rooms')}
+          onPress={() => router.navigate('/customer/rooms')}
         >
           View All
         </Button>
@@ -306,7 +306,7 @@ export default function CustomerHomeScreen() {
             <Button
               mode="contained"
               compact
-              onPress={() => router.push('/rooms')}
+              onPress={() => router.navigate('/customer/rooms')}
             >
               View rooms
             </Button>

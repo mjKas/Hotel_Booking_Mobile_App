@@ -50,7 +50,7 @@ export default function BookingConfirmationScreen() {
       {/* Hotel Branding */}
       <View style={styles.branding}>
         <Image
-          source={require('../../assets/images/royal-crest-logo.jpg')}
+          source={require('../../../assets/images/royal-crest-logo.jpg')}
           style={styles.logo}
           resizeMode="contain"
         />
@@ -114,7 +114,7 @@ export default function BookingConfirmationScreen() {
       <Button
         mode="contained"
         onPress={() =>
-          router.replace(`/bookings/${booking.id}`)
+          router.replace(`/customer/booking/${booking.id}`)
         }
         style={styles.button}
         contentStyle={styles.buttonContent}

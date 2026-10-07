@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import {
   Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   View,
@@ -25,13 +28,20 @@ import { useCreateBooking, useRoom, useRoomQuote } from '@/src/hooks/queries';
 import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
 import { formatMoney, todayISO } from '@/src/lib/format';
 
+/**
+ * This page lives in the customer drawer, which keeps screens mounted. Keying
+ * the form on the room gives every room a fresh form instead of the dates and
+ * requests typed for the previous one.
+ */
 export default function CreateBookingScreen() {
+  const { roomId } = useLocalSearchParams<{ roomId?: string }>();
+
+  return <CreateBookingForm key={roomId ?? 'none'} roomIdParam={roomId} />;
+}
+
+function CreateBookingForm({ roomIdParam }: { roomIdParam?: string }) {
   const colors = useAppThemeColors();
   const styles = createStyles(colors);
-
-  const { roomId: roomIdParam } = useLocalSearchParams<{
-    roomId?: string;
-  }>();
   const roomId = Number(roomIdParam);
   const hasRoom = Number.isFinite(roomId) && roomId > 0;
 
@@ -58,6 +68,7 @@ export default function CreateBookingScreen() {
   const maxGuests = room.data?.roomType.maxOccupancy ?? 8;
 
   async function handleConfirm() {
+    Keyboard.dismiss();
     setError(null);
 
     try {
@@ -70,7 +81,7 @@ export default function CreateBookingScreen() {
       });
 
       router.replace(
-        `/bookings/confirmation?bookingId=${booking.id}`,
+        `/customer/booking/confirmation?bookingId=${booking.id}`,
       );
     } catch (err) {
       // 409 means someone else took the room between the quote and the submit.
@@ -84,7 +95,7 @@ export default function CreateBookingScreen() {
     return (
       <ErrorState
         error={new Error('Choose a room before booking.')}
-        onRetry={() => router.replace('/rooms')}
+        onRetry={() => router.replace('/customer/rooms')}
         fallback="Choose a room before booking."
       />
     );
@@ -105,15 +116,22 @@ export default function CreateBookingScreen() {
   }
 
   return (
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
     >
       {/* Hotel Branding */}
       <View style={styles.branding}>
         <Image
-          source={require('../../assets/images/royal-crest-logo.jpg')}
+          source={require('../../../assets/images/royal-crest-logo.jpg')}
           style={styles.logo}
           resizeMode="contain"
         />
@@ -390,6 +408,7 @@ export default function CreateBookingScreen() {
         Back
       </Button>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+import { queryClient } from '../lib/queryClient';
 import { authService } from '../services/authService';
 import { biometricService } from '../services/biometricService';
 import type { LoginPayload, RegisterPayload, User } from '../types/domain';
@@ -45,6 +46,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   async signIn(payload) {
     const session = await authService.login(payload);
 
+    // Whatever was cached belongs to the previous account, if any.
+    queryClient.clear();
+
     set({ user: session.user, status: 'authenticated' });
 
     return session.user;
@@ -53,6 +57,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   async signInWithBiometrics() {
     const session = await biometricService.signIn();
 
+    queryClient.clear();
+
     set({ user: session.user, status: 'authenticated' });
 
     return session.user;
@@ -60,6 +66,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   async register(payload) {
     const session = await authService.register(payload);
+
+    queryClient.clear();
 
     set({ user: session.user, status: 'authenticated' });
 
@@ -72,6 +80,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // The biometric enrolment deliberately survives a sign-out - that is the
     // whole point of it. Only `biometricService.disable()` removes it.
     set({ user: null, status: 'anonymous' });
+
+    // Bookings, accounts and profile data must not outlive the session that
+    // fetched them. Cancel first so an in-flight request cannot repopulate it.
+    await queryClient.cancelQueries();
+    queryClient.clear();
   },
 
   setUser(user) {

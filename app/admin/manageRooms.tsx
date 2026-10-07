@@ -1,34 +1,16 @@
-import React, { useEffect, useState } from 'react';
-import {
-  Alert,
-  FlatList,
-  Image,
-  Keyboard,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import React, { useState } from 'react';
+import { Alert, FlatList, Keyboard, StyleSheet, View } from 'react-native';
+import { Button, Card, Chip, Text, TextInput } from 'react-native-paper';
 
-import {
-  Button,
-  Card,
-  Chip,
-  HelperText,
-  Text,
-  TextInput,
-} from 'react-native-paper';
-
-import { toErrorMessage } from '@/src/api/apiError';
+import { ApiError, toErrorMessage } from '@/src/api/apiError';
+import { BrandHeader, countLabel } from '@/src/components/brand-header';
+import { FormModal, useFormInputProps } from '@/src/components/form-modal';
 import {
   EmptyState,
   ErrorState,
   LoadingState,
 } from '@/src/components/screen-states';
+import { StatusBadge, type BadgeTone } from '@/src/components/status-badge';
 import {
   useCreateRoom,
   useDeleteRoom,
@@ -54,8 +36,7 @@ const STATUSES: RoomStatus[] = [
 export default function ManageRoomsScreen() {
   const colors = useAppThemeColors();
   const styles = createStyles(colors);
-
-  const { height: screenHeight } = useWindowDimensions();
+  const inputProps = useFormInputProps();
 
   const { data: rooms, isPending, isError, error, refetch } = useRooms();
 
@@ -73,9 +54,6 @@ export default function ManageRoomsScreen() {
   const [dialogVisible, setDialogVisible] =
     useState(false);
 
-  const [keyboardVisible, setKeyboardVisible] =
-    useState(false);
-
   const [roomNumber, setRoomNumber] = useState('');
   const [roomTypeId, setRoomTypeId] = useState<number | null>(null);
   const [floor, setFloor] = useState('');
@@ -83,31 +61,6 @@ export default function ManageRoomsScreen() {
   const [status, setStatus] = useState<RoomStatus>('AVAILABLE');
   const [description, setDescription] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const showListener = Keyboard.addListener(
-      Platform.OS === 'ios'
-        ? 'keyboardWillShow'
-        : 'keyboardDidShow',
-      () => {
-        setKeyboardVisible(true);
-      },
-    );
-
-    const hideListener = Keyboard.addListener(
-      Platform.OS === 'ios'
-        ? 'keyboardWillHide'
-        : 'keyboardDidHide',
-      () => {
-        setKeyboardVisible(false);
-      },
-    );
-
-    return () => {
-      showListener.remove();
-      hideListener.remove();
-    };
-  }, []);
 
   const openAddRoom = () => {
     Keyboard.dismiss();
@@ -140,20 +93,20 @@ export default function ManageRoomsScreen() {
   };
 
   const closeDialog = () => {
-    Keyboard.dismiss();
     setDialogVisible(false);
     setFormError(null);
   };
 
   const saveRoom = async () => {
-    Keyboard.dismiss();
     setFormError(null);
 
     const nightlyRate = Number(price);
     const floorNumber = Number(floor);
 
-    if (!roomNumber.trim()) {
-      setFormError('Enter a room number.');
+    // These mirror RoomWriteRequest on the API, so a form that passes here is
+    // not bounced with a 422 after the round trip.
+    if (!roomNumber.trim() || roomNumber.trim().length > 10) {
+      setFormError('Enter a room number of up to 10 characters.');
       return;
     }
 
@@ -162,13 +115,22 @@ export default function ManageRoomsScreen() {
       return;
     }
 
-    if (!Number.isFinite(nightlyRate) || nightlyRate <= 0) {
-      setFormError('Enter a nightly rate above zero.');
+    if (
+      !Number.isFinite(nightlyRate) ||
+      nightlyRate <= 0 ||
+      nightlyRate > 10000
+    ) {
+      setFormError('Enter a nightly rate between 0 and 10,000.');
       return;
     }
 
-    if (!Number.isFinite(floorNumber) || floorNumber < 0) {
-      setFormError('Enter a floor number.');
+    if (
+      !floor.trim() ||
+      !Number.isInteger(floorNumber) ||
+      floorNumber < 0 ||
+      floorNumber > 50
+    ) {
+      setFormError('Enter a floor number between 0 and 50.');
       return;
     }
 
@@ -192,10 +154,18 @@ export default function ManageRoomsScreen() {
       }
 
       setDialogVisible(false);
+
+      Alert.alert(
+        editingRoomId !== null ? 'Room updated' : 'Room added',
+        `Room ${payload.roomNumber} has been saved.`,
+      );
     } catch (err) {
-      // A duplicate room number comes back as a 409.
+      // A duplicate room number comes back as a 409 with a field error. A 500
+      // on create is a server fault - see docs/BACKEND_ISSUES.md.
       setFormError(
-        toErrorMessage(err, 'We could not save this room.'),
+        err instanceof ApiError && err.fieldErrors?.roomNumber
+          ? err.fieldErrors.roomNumber
+          : toErrorMessage(err, 'We could not save this room.'),
       );
     }
   };
@@ -211,6 +181,11 @@ export default function ManageRoomsScreen() {
           style: 'destructive',
           onPress: () =>
             deleteRoom.mutate(room.id, {
+              onSuccess: () =>
+                Alert.alert(
+                  'Room deleted',
+                  `Room ${room.roomNumber} has been removed.`,
+                ),
               onError: (err) =>
                 Alert.alert(
                   'Could not delete',
@@ -226,10 +201,6 @@ export default function ManageRoomsScreen() {
     );
   };
 
-  const dialogMaxHeight = keyboardVisible
-    ? screenHeight * 0.48
-    : screenHeight * 0.70;
-
   if (isPending) {
     return <LoadingState label="Loading rooms…" />;
   }
@@ -244,49 +215,16 @@ export default function ManageRoomsScreen() {
     );
   }
 
+  const saving = createRoom.isPending || updateRoom.isPending;
+
   return (
     <View style={styles.container}>
 
-      {/* HEADER */}
-
-      <View style={styles.header}>
-
-        <View style={styles.branding}>
-
-          <Image
-            source={require('../../assets/images/royal-crest-logo.jpg')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-
-          <View>
-            <Text style={styles.brandName}>
-              Royal Crest Hotel
-            </Text>
-
-            <Text style={styles.pageTitle}>
-              Manage Rooms
-            </Text>
-
-            <Text style={styles.subtitle}>
-              {rooms.length} rooms
-            </Text>
-          </View>
-
-        </View>
-
-        <Button
-          mode="contained"
-          icon="plus"
-          onPress={openAddRoom}
-          compact
-          buttonColor={colors.secondary}
-          textColor="#000000"
-        >
-          Add
-        </Button>
-
-      </View>
+      <BrandHeader
+        title="Manage Rooms"
+        subtitle={countLabel(rooms.length, 'room')}
+        action={{ label: 'Add', icon: 'plus', onPress: openAddRoom }}
+      />
 
       {/* ROOM LIST */}
 
@@ -322,19 +260,10 @@ export default function ManageRoomsScreen() {
                   </Text>
                 </View>
 
-                <Chip
-                  compact
-                  style={getStatusStyle(
-                    item.status,
-                    styles,
-                  )}
-                  textStyle={getStatusTextStyle(
-                    item.status,
-                    styles,
-                  )}
-                >
-                  {ROOM_STATUS_LABELS[item.status]}
-                </Chip>
+                <StatusBadge
+                  label={ROOM_STATUS_LABELS[item.status]}
+                  tone={roomTone(item.status)}
+                />
 
               </View>
 
@@ -343,13 +272,8 @@ export default function ManageRoomsScreen() {
               </Text>
 
               <View style={styles.details}>
-                <Text
-                  style={{
-                    color: colors.textPrimary,
-                  }}
-                >
-                  {item.roomType.maxOccupancy} Guests · Floor{' '}
-                  {item.floor}
+                <Text style={styles.capacity}>
+                  {item.roomType.maxOccupancy} Guests · Floor {item.floor}
                 </Text>
 
                 <Text style={styles.price}>
@@ -369,6 +293,7 @@ export default function ManageRoomsScreen() {
                     styles.actionButton,
                     styles.editButton,
                   ]}
+                  contentStyle={styles.actionContent}
                 >
                   Edit
                 </Button>
@@ -379,10 +304,12 @@ export default function ManageRoomsScreen() {
                   onPress={() =>
                     confirmDelete(item)
                   }
+                  disabled={deleteRoom.isPending}
                   style={[
                     styles.actionButton,
                     styles.deleteButton,
                   ]}
+                  contentStyle={styles.actionContent}
                 >
                   Delete
                 </Button>
@@ -396,209 +323,111 @@ export default function ManageRoomsScreen() {
 
       {/* ADD / EDIT MODAL */}
 
-      <Modal
+      <FormModal
         visible={dialogVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={closeDialog}
-        statusBarTranslucent
+        title={editingRoomId !== null ? 'Edit Room' : 'Add New Room'}
+        onClose={closeDialog}
+        onSubmit={saveRoom}
+        submitLabel={editingRoomId !== null ? 'Save Room' : 'Add Room'}
+        submitting={saving}
+        error={formError}
       >
-        <KeyboardAvoidingView
-          style={styles.modalRoot}
-          behavior={
-            Platform.OS === 'ios'
-              ? 'padding'
-              : 'height'
-          }
-        >
+        <TextInput
+          {...inputProps}
+          label="Room Number"
+          value={roomNumber}
+          onChangeText={setRoomNumber}
+          maxLength={10}
+          autoCapitalize="characters"
+          returnKeyType="next"
+        />
 
-          <Pressable
-            style={styles.modalBackdrop}
-            onPress={closeDialog}
-          />
+        <Text style={styles.fieldLabel}>Room Type</Text>
 
-          <View
-            style={[
-              styles.formCard,
-              {
-                maxHeight: dialogMaxHeight,
-              },
-            ]}
-          >
-
-            <View style={styles.formHeader}>
-              <Text style={styles.formTitle}>
-                {editingRoomId !== null
-                  ? 'Edit Room'
-                  : 'Add New Room'}
-              </Text>
-            </View>
-
-            <ScrollView
-              style={styles.formScroll}
-              contentContainerStyle={styles.formContent}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
+        <View style={styles.chipRow}>
+          {(roomTypes.data ?? []).map((type) => (
+            <Chip
+              key={type.id}
+              selected={roomTypeId === type.id}
+              showSelectedCheck={false}
+              onPress={() => setRoomTypeId(type.id)}
+              style={[
+                styles.pickerChip,
+                roomTypeId === type.id && {
+                  backgroundColor: colors.secondary,
+                },
+              ]}
             >
+              {type.name}
+            </Chip>
+          ))}
+        </View>
 
-              <TextInput
-                label="Room Number"
-                mode="outlined"
-                value={roomNumber}
-                onChangeText={setRoomNumber}
-                returnKeyType="next"
-                style={styles.dialogInput}
-              />
+        <TextInput
+          {...inputProps}
+          label="Floor"
+          value={floor}
+          onChangeText={setFloor}
+          keyboardType="number-pad"
+          returnKeyType="next"
+        />
 
-              <Text style={styles.fieldLabel}>Room Type</Text>
+        <TextInput
+          {...inputProps}
+          label="Price per Night"
+          value={price}
+          onChangeText={setPrice}
+          keyboardType="decimal-pad"
+          returnKeyType="next"
+        />
 
-              <View style={styles.chipRow}>
-                {(roomTypes.data ?? []).map((type) => (
-                  <Chip
-                    key={type.id}
-                    selected={roomTypeId === type.id}
-                    showSelectedCheck={false}
-                    onPress={() => setRoomTypeId(type.id)}
-                    style={[
-                      styles.pickerChip,
-                      roomTypeId === type.id && {
-                        backgroundColor: colors.secondary,
-                      },
-                    ]}
-                  >
-                    {type.name}
-                  </Chip>
-                ))}
-              </View>
+        <Text style={styles.fieldLabel}>Status</Text>
 
-              <TextInput
-                label="Floor"
-                mode="outlined"
-                value={floor}
-                onChangeText={setFloor}
-                keyboardType="number-pad"
-                returnKeyType="next"
-                style={styles.dialogInput}
-              />
+        <View style={styles.chipRow}>
+          {STATUSES.map((option) => (
+            <Chip
+              key={option}
+              selected={status === option}
+              showSelectedCheck={false}
+              onPress={() => setStatus(option)}
+              style={[
+                styles.pickerChip,
+                status === option && {
+                  backgroundColor: colors.secondary,
+                },
+              ]}
+            >
+              {ROOM_STATUS_LABELS[option]}
+            </Chip>
+          ))}
+        </View>
 
-              <TextInput
-                label="Price per Night"
-                mode="outlined"
-                value={price}
-                onChangeText={setPrice}
-                keyboardType="decimal-pad"
-                returnKeyType="next"
-                style={styles.dialogInput}
-              />
-
-              <Text style={styles.fieldLabel}>Status</Text>
-
-              <View style={styles.chipRow}>
-                {STATUSES.map((option) => (
-                  <Chip
-                    key={option}
-                    selected={status === option}
-                    showSelectedCheck={false}
-                    onPress={() => setStatus(option)}
-                    style={[
-                      styles.pickerChip,
-                      status === option && {
-                        backgroundColor: colors.secondary,
-                      },
-                    ]}
-                  >
-                    {ROOM_STATUS_LABELS[option]}
-                  </Chip>
-                ))}
-              </View>
-
-              <TextInput
-                label="Description"
-                mode="outlined"
-                value={description}
-                onChangeText={setDescription}
-                multiline
-                numberOfLines={3}
-                maxLength={600}
-                returnKeyType="done"
-                onSubmitEditing={Keyboard.dismiss}
-                style={styles.dialogInput}
-              />
-
-              {formError && (
-                <HelperText type="error" visible>
-                  {formError}
-                </HelperText>
-              )}
-
-            </ScrollView>
-
-            <View style={styles.formActions}>
-
-              <Button
-                mode="text"
-                onPress={closeDialog}
-                textColor={colors.textPrimary}
-                style={styles.formActionButton}
-              >
-                Cancel
-              </Button>
-
-              <Button
-                mode="text"
-                onPress={saveRoom}
-                loading={createRoom.isPending || updateRoom.isPending}
-                disabled={createRoom.isPending || updateRoom.isPending}
-                textColor={colors.secondary}
-                style={styles.formActionButton}
-              >
-                {editingRoomId !== null
-                  ? 'Save Room'
-                  : 'Add Room'}
-              </Button>
-
-            </View>
-
-          </View>
-
-        </KeyboardAvoidingView>
-      </Modal>
+        <TextInput
+          {...inputProps}
+          label="Description"
+          value={description}
+          onChangeText={setDescription}
+          multiline
+          numberOfLines={3}
+          maxLength={600}
+        />
+      </FormModal>
 
     </View>
   );
 }
 
-function getStatusStyle(
-  status: Room['status'],
-  styles: ReturnType<typeof createStyles>,
-) {
+function roomTone(status: RoomStatus): BadgeTone {
   switch (status) {
     case 'AVAILABLE':
-      return styles.available;
+      return 'success';
 
     case 'OCCUPIED':
-      return styles.occupied;
+      return 'info';
 
     default:
       // MAINTENANCE and OUT_OF_SERVICE both read as unavailable.
-      return styles.maintenance;
-  }
-}
-
-function getStatusTextStyle(
-  status: Room['status'],
-  styles: ReturnType<typeof createStyles>,
-) {
-  switch (status) {
-    case 'AVAILABLE':
-      return styles.availableText;
-
-    case 'OCCUPIED':
-      return styles.occupiedText;
-
-    default:
-      return styles.maintenanceText;
+      return 'error';
   }
 }
 
@@ -610,50 +439,6 @@ const createStyles = (
     container: {
       flex: 1,
       backgroundColor: colors.background,
-    },
-
-    header: {
-      backgroundColor: colors.primary,
-      paddingTop: 55,
-      paddingHorizontal: 20,
-      paddingBottom: 20,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    },
-
-    branding: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      flex: 1,
-      marginRight: 10,
-    },
-
-    logo: {
-      width: 52,
-      height: 52,
-      borderRadius: 26,
-      marginRight: 12,
-      backgroundColor: colors.surface,
-    },
-
-    brandName: {
-      color: colors.headerText,
-      fontSize: 19,
-      fontWeight: '800',
-    },
-
-    pageTitle: {
-      color: colors.headerText,
-      fontSize: 16,
-      fontWeight: '700',
-      marginTop: 2,
-    },
-
-    subtitle: {
-      color: colors.headerSubtle,
-      marginTop: 2,
-      fontSize: 13,
     },
 
     list: {
@@ -708,6 +493,10 @@ const createStyles = (
       marginTop: 10,
     },
 
+    capacity: {
+      color: colors.textPrimary,
+    },
+
     price: {
       color: colors.textPrimary,
       fontWeight: '700',
@@ -722,6 +511,11 @@ const createStyles = (
     actionButton: {
       flex: 1,
       borderRadius: 8,
+      borderWidth: 1.5,
+    },
+
+    actionContent: {
+      height: 44,
     },
 
     editButton: {
@@ -730,85 +524,6 @@ const createStyles = (
 
     deleteButton: {
       borderColor: colors.error,
-    },
-
-    available: {
-      backgroundColor: colors.successSurface,
-    },
-
-    availableText: {
-      color: colors.success,
-      fontSize: 10,
-      fontWeight: '800',
-    },
-
-    occupied: {
-      backgroundColor: colors.infoSurface,
-    },
-
-    occupiedText: {
-      color: colors.info,
-      fontSize: 10,
-      fontWeight: '800',
-    },
-
-    maintenance: {
-      backgroundColor: colors.errorSurface,
-    },
-
-    maintenanceText: {
-      color: colors.error,
-      fontSize: 10,
-      fontWeight: '800',
-    },
-
-    modalRoot: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-
-    modalBackdrop: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    },
-
-    formCard: {
-      width: '90%',
-      maxWidth: 420,
-      borderRadius: 28,
-      overflow: 'hidden',
-      backgroundColor: colors.surface,
-      elevation: 8,
-      shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 5,
-      },
-      shadowOpacity: 0.25,
-      shadowRadius: 15,
-    },
-
-    formHeader: {
-      paddingHorizontal: 24,
-      paddingTop: 22,
-      paddingBottom: 14,
-    },
-
-    formTitle: {
-      fontSize: 29,
-      fontWeight: '500',
-      color: colors.textPrimary,
-    },
-
-    formScroll: {
-      flexGrow: 0,
-    },
-
-    formContent: {
-      paddingHorizontal: 20,
-      paddingTop: 8,
-      paddingBottom: 8,
     },
 
     fieldLabel: {
@@ -829,25 +544,6 @@ const createStyles = (
     },
 
     pickerChip: {
-      backgroundColor: colors.surfaceVariant,
-    },
-
-    dialogInput: {
-      marginBottom: 13,
-      backgroundColor: colors.surface,
-    },
-
-    formActions: {
-      minHeight: 64,
-      flexDirection: 'row',
-      justifyContent: 'flex-end',
-      alignItems: 'center',
-      paddingHorizontal: 12,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.border,
-    },
-
-    formActionButton: {
-      marginLeft: 4,
+      backgroundColor: colors.background,
     },
   });

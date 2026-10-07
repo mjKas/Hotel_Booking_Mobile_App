@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -25,6 +26,8 @@ import { toErrorMessage } from '@/src/api/apiError';
 import {
   BiometricCancelledError,
   biometricService,
+  toBiometricErrorMessage,
+  type BiometricAvailability,
 } from '@/src/services/biometricService';
 import type { User } from '@/src/types/domain';
 
@@ -58,6 +61,11 @@ function LoginForm() {
   // Whether this handset already holds an enrolment, and for whom.
   const [enrolledEmail, setEnrolledEmail] = useState<string | null>(null);
 
+  // What the sensor is (Face ID, fingerprint...) and whether it can be used
+  // right now, so the button is never shown when it cannot work.
+  const [availability, setAvailability] =
+    useState<BiometricAvailability | null>(null);
+
   const isDark =
     colors.surface.toLowerCase() !== '#ffffff' &&
     colors.surface.toLowerCase() !== '#fff';
@@ -73,9 +81,13 @@ function LoginForm() {
   const refreshEnrolment = useCallback(() => {
     let cancelled = false;
 
-    void biometricService.getEnrolledEmail().then((value) => {
+    void Promise.all([
+      biometricService.getEnrolledEmail(),
+      biometricService.getAvailability(),
+    ]).then(([value, capability]) => {
       if (!cancelled) {
         setEnrolledEmail(value);
+        setAvailability(capability);
         if (value) setEmail((current) => current || value);
       }
     });
@@ -96,6 +108,8 @@ function LoginForm() {
   }
 
   async function handleSignIn() {
+    Keyboard.dismiss();
+
     if (!email.trim() || !password) {
       setError('Enter your email address and password.');
       return;
@@ -120,6 +134,7 @@ function LoginForm() {
   }
 
   async function handleBiometricSignIn() {
+    Keyboard.dismiss();
     setError(null);
     setIsUnlocking(true);
 
@@ -129,7 +144,11 @@ function LoginForm() {
       // Backing out of the OS prompt is not an error worth shouting about.
       if (!(err instanceof BiometricCancelledError)) {
         setError(
-          toErrorMessage(err, 'We could not verify your biometrics.'),
+          toBiometricErrorMessage(
+            err,
+            'We could not verify your identity. Please sign in with your ' +
+              'password.',
+          ),
         );
       }
 
@@ -148,6 +167,7 @@ function LoginForm() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.container}>
@@ -240,12 +260,13 @@ function LoginForm() {
               </HelperText>
             ) : null}
 
-            {/* Biometric unlock, only once this device has been enrolled */}
-            {enrolledEmail ? (
+            {/* Biometric unlock: only once this device has been enrolled, and
+                only while the sensor can actually be used. */}
+            {enrolledEmail && availability?.supported ? (
               <>
                 <Button
                   mode="outlined"
-                  icon="fingerprint"
+                  icon={availability.icon}
                   onPress={handleBiometricSignIn}
                   loading={isUnlocking}
                   disabled={isUnlocking || isSubmitting}
@@ -263,7 +284,9 @@ function LoginForm() {
                     },
                   ]}
                 >
-                  Sign in with biometrics
+                  {availability.kind === 'generic'
+                    ? 'Sign in with biometrics'
+                    : `Sign in with ${availability.label}`}
                 </Button>
 
                 <Text
@@ -274,7 +297,7 @@ function LoginForm() {
                     },
                   ]}
                 >
-                  Set up for {enrolledEmail}
+                  Signs in as {enrolledEmail}
                 </Text>
               </>
             ) : null}
@@ -289,6 +312,7 @@ function LoginForm() {
               autoCapitalize="none"
               autoCorrect={false}
               autoComplete="email"
+              returnKeyType="next"
               style={styles.input}
               outlineColor={isDark ? '#D6E0EC' : '#E1E1E1'}
               activeOutlineColor={isDark ? '#FFFFFF' : '#0B315E'}
@@ -306,6 +330,7 @@ function LoginForm() {
               autoCapitalize="none"
               autoCorrect={false}
               autoComplete="current-password"
+              returnKeyType="go"
               onSubmitEditing={handleSignIn}
               style={styles.input}
               outlineColor={isDark ? '#D6E0EC' : '#E1E1E1'}

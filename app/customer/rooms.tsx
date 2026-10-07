@@ -1,10 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import {
-  FlatList,
-  Image,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { FlatList, Keyboard, StyleSheet, View } from 'react-native';
 import {
   Card,
   Text,
@@ -13,6 +8,8 @@ import {
 } from 'react-native-paper';
 import { router } from 'expo-router';
 
+import { BrandHeader, countLabel } from '@/src/components/brand-header';
+import { StatusBadge } from '@/src/components/status-badge';
 import {
   EmptyState,
   ErrorState,
@@ -21,6 +18,7 @@ import {
 import { useRooms } from '@/src/hooks/queries';
 import { useAppThemeColors } from '@/src/hooks/use-app-theme-colors';
 import { formatMoney } from '@/src/lib/format';
+import { ROOM_STATUS_LABELS } from '@/src/types/domain';
 
 /** Fallback for room types that have no image configured. */
 const PLACEHOLDER_IMAGE =
@@ -65,35 +63,18 @@ export default function RoomsScreen() {
   return (
     <View style={styles.container}>
 
-      {/* Hotel Branding */}
-      <View style={styles.branding}>
-        <Image
-          source={require('../../assets/images/royal-crest-logo.jpg')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-
-        <Text style={styles.hotelName}>
-          Royal Crest Hotel
-        </Text>
-      </View>
-
-      {/* Page Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>
-          Rooms
-        </Text>
-
-        <Text style={styles.subtitle}>
-          Find your perfect room
-        </Text>
-      </View>
+      <BrandHeader
+        title="View Rooms"
+        subtitle={countLabel(filteredRooms.length, 'room')}
+      />
 
       {/* Search */}
       <Searchbar
         placeholder="Search rooms"
         value={search}
         onChangeText={setSearch}
+        returnKeyType="search"
+        onSubmitEditing={Keyboard.dismiss}
         style={styles.search}
         inputStyle={styles.searchInput}
       />
@@ -106,6 +87,8 @@ export default function RoomsScreen() {
         showsVerticalScrollIndicator={false}
         refreshing={isRefetching}
         onRefresh={() => void refetch()}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         ListEmptyComponent={
           <EmptyState
             title="No rooms match that search"
@@ -123,9 +106,23 @@ export default function RoomsScreen() {
             />
 
             <Card.Content style={styles.cardContent}>
-              <Text style={styles.roomType}>
-                {item.roomType.name}
-              </Text>
+              <View style={styles.titleRow}>
+                <Text style={styles.roomType}>
+                  {item.roomType.name}
+                </Text>
+
+                {/* Day-to-day availability; dates are checked when booking. */}
+                <StatusBadge
+                  label={ROOM_STATUS_LABELS[item.status]}
+                  tone={
+                    item.status === 'AVAILABLE'
+                      ? 'success'
+                      : item.status === 'OCCUPIED'
+                        ? 'info'
+                        : 'error'
+                  }
+                />
+              </View>
 
               <Text style={styles.roomNumber}>
                 Room {item.roomNumber} · Floor {item.floor}
@@ -150,19 +147,12 @@ export default function RoomsScreen() {
               <Button
                 mode="contained"
                 onPress={() =>
-                  router.push(`/rooms/${item.id}`)
+                  router.push(`/customer/room/${item.id}`)
                 }
               >
                 View Room
               </Button>
 
-              <Button
-                mode="text"
-                icon="arrow-left"
-                onPress={() => router.back()}
-              >
-                Back
-              </Button>
             </Card.Actions>
 
           </Card>
@@ -254,7 +244,15 @@ const createStyles = (
       paddingTop: 14,
     },
 
+    titleRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: 10,
+    },
+
     roomType: {
+      flexShrink: 1,
       fontSize: 20,
       fontWeight: '700',
       color: colors.textPrimary,

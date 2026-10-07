@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -98,6 +99,7 @@ function RegisterForm() {
     password === confirmPassword;
 
   const handleRegister = async () => {
+    Keyboard.dismiss();
     setSubmitted(true);
     setFormError(null);
     setEmailError(null);
@@ -123,6 +125,8 @@ function RegisterForm() {
       });
 
       // Registration always creates a customer account, and it signs you in.
+      // The customer area then offers biometric sign-in (Face ID on iPhone,
+      // fingerprint on Android) when this device supports it.
       router.replace('/customer/tabs');
     } catch (error) {
       // A duplicate email comes back as a 409 with a field error, which
@@ -156,6 +160,7 @@ function RegisterForm() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.container}>
@@ -385,6 +390,8 @@ function RegisterForm() {
               secureTextEntry={!showConfirmPassword}
               autoCapitalize="none"
               autoCorrect={false}
+              returnKeyType="go"
+              onSubmitEditing={handleRegister}
               left={
                 <TextInput.Icon
                   icon="lock-check-outline"

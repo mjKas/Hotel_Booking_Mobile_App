@@ -107,6 +107,17 @@ async function request<T>(
     headers['Content-Type'] = 'application/json';
   }
 
+  // The API answers reads with `Cache-Control: max-age=3600`, so without this
+  // the phone's own HTTP cache (NSURLCache / OkHttp) replays an hour-old list
+  // after every add, edit or delete. `no-cache` also makes the server skip its
+  // Redis cache, whose hits currently fail with a 500 (docs/BACKEND_ISSUES.md).
+  const isRead = method === 'GET';
+
+  if (isRead) {
+    headers['Cache-Control'] = 'no-cache';
+    headers.Pragma = 'no-cache';
+  }
+
   if (!anonymous) {
     const accessToken = tokenStore.getAccessToken();
 
@@ -123,13 +134,20 @@ async function request<T>(
       {
         method,
         headers,
+        // React Native's fetch turns this into a cache-busting query param
+        // for GETs, which bypasses the device cache on every platform.
+        cache: isRead ? 'no-store' : undefined,
         body:
           body !== undefined
             ? JSON.stringify(body)
             : undefined,
       },
     );
-  } catch {
+  } catch (error) {
+    if (__DEV__) {
+      console.warn(`[api] ${method} ${path} could not be sent`, error);
+    }
+
     throw new ApiError(
       0,
       'Unable to reach the server. Check your connection and try again.',
@@ -172,9 +190,24 @@ async function request<T>(
   }
 
   if (!response.ok) {
+    if (__DEV__) {
+      console.warn(
+        `[api] ${method} ${path} failed with ${response.status}`,
+        data,
+      );
+    }
+
+    // A 5xx body is a bare "Internal Server Error" with nothing the user can
+    // act on, so say plainly that the fault is on the server's side.
+    const message =
+      response.status >= 500
+        ? `The server could not complete this request (error ${response.status}). ` +
+          'Please try again later.'
+        : extractMessage(data, 'The request failed.');
+
     throw new ApiError(
       response.status,
-      extractMessage(data, 'The request failed.'),
+      message,
       parseFieldErrors(data),
     );
   }

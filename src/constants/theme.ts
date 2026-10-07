@@ -35,6 +35,14 @@ export const Colors = {
     headerText: '#FFFFFF',
     headerSubtle: '#E5E5E5',
 
+    // Navigation bar and the orange brand band under it. These are brand
+    // colours, so they stay the same in both themes.
+    navBar: '#082A55',
+    navBarText: '#FFFFFF',
+    brandBand: '#FCA311',
+    brandBandText: '#FFFFFF',
+    brandBandAction: '#000000',
+
     // Other
     imagePlaceholder: '#E5E5E5',
 
@@ -81,6 +89,14 @@ export const Colors = {
     // Header
     headerText: '#FFFFFF',
     headerSubtle: '#E5E5E5',
+
+    // Navigation bar and the orange brand band under it. These are brand
+    // colours, so they stay the same in both themes.
+    navBar: '#082A55',
+    navBarText: '#FFFFFF',
+    brandBand: '#FCA311',
+    brandBandText: '#FFFFFF',
+    brandBandAction: '#000000',
 
     // Other
     imagePlaceholder: '#082A55',
