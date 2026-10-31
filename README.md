@@ -165,4 +165,4 @@ eas build --profile production --platform all
 
 ## Team
 
-Developed by Manuja** and Ransike as part of the Royal Crest Hotel Booking System project.
+Developed by Manuja and Ransike as part of the Royal Crest Hotel Booking System project.
